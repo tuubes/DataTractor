@@ -1,0 +1,11 @@
+# Build files
+bin/
+build/
+out/
+
+# PyCharm files
+*.iml
+.idea
+
+# Mac OS DS_STORE
+.DS_STORE
