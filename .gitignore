@@ -2,6 +2,7 @@
 bin/
 build/
 out/
+*__pycache__
 
 # PyCharm files
 *.iml
