@@ -44,13 +44,18 @@ search_level = 4
 print("Identified H%ds:" % search_level)
 for h in s1.recursive_findall(lambda e: isinstance(e, HtmlSection) and e.level == search_level):
 	print("%s : \"%s\"" % (str(h.html_id).center(42), h.title))
-	for t in h.recursive_findall(lambda e: isinstance(e, Tag) and e.name == "table"):
+	for t in h.recursive_findall(lambda e: isinstance(e, HtmlTable)):
 		print(t)
+		for row in t.itr_rows():
+			l = list(row)
+			print("row:", len(l), ":", l)
+		print("cells:", list(t.itr_cells()))
 
 print("---------------------")
 l = [["a", "b", "c"], [0, 1, 2], [3, 4, 5], [6, 7, 8]]
 table = HtmlTable(l)
 print("table:", table)
+print("cells:", list(table.itr_cells()))
 for row in table.itr_rows():
 	print("row:", list(row))
 for column in table.itr_columns():

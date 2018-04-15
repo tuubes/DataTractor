@@ -72,6 +72,8 @@ def flatten(container: Tag, trim: bool):
 	for c in container.children:
 		if isinstance(c, Tag) and contains_headings(c):
 			yield from flatten(c, trim)
+		elif isinstance(c, Tag) and c.name == "table":
+			yield parse_table(c, trim)
 		else:
 			if trim and isinstance(c, str):
 				trimmed = c.strip()
@@ -79,6 +81,48 @@ def flatten(container: Tag, trim: bool):
 					yield NavigableString(trimmed)
 			else:
 				yield c
+
+
+def parse_table(table: Tag, trim: bool):
+	row_count = 0
+	col_count = 0
+	for tr in table.find_all("tr"):
+		row_count += 1
+		if row_count == 1:
+			for td in tr.find_all(["th", "td"]):
+				col_count += 1
+
+	rows = []
+	for i in range(0, row_count):
+		row = []
+		for j in range(0, col_count):
+			row.append(None)
+		rows.append(row)
+
+	i = 0
+	for tr in table.find_all("tr"):
+		j = 0
+		while j < col_count and rows[i][j] is not None:
+			j += 1
+
+		for td in tr.find_all(["th", "td"]):
+			cell = td.contents
+			if len(cell) == 1:
+				cell = cell[0]
+			elif len(cell) == 0:
+				cell = None
+			if trim and isinstance(cell, str):
+				trimmed = cell.strip()
+				cell = NavigableString(trimmed) if len(trimmed) > 0 else None
+
+			ispan = int(td["rowspan"]) if td.has_attr("rowspan") else 1
+			jspan = int(td["colspan"]) if td.has_attr("colspan") else 1
+			for xi in range(i, min(i + ispan, row_count)):
+				for xj in range(j, min(j + jspan, col_count)):
+					rows[xi][xj] = cell
+			j += 1
+		i += 1
+	return HtmlTable(rows)
 
 
 class HtmlSection:
@@ -178,10 +222,14 @@ class HtmlTable:
 		self.rows = rows
 
 	def __str__(self):
-		return "HtmlTable(size=%d, cells=%s)" % (self.cell_count(), list(self.itr_cells()))
+		return "HtmlTable(size=%d, rows=%s)" % (self.cell_count(), self.rows)
 
 	def __repr__(self):
 		return self.__str__()
+
+	@property
+	def name(self):
+		return None
 
 	def row_count(self):
 		return len(self.rows)
