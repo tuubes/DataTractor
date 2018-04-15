@@ -99,6 +99,17 @@ class HtmlSection:
 	def __repr__(self):
 		return self.__str__()
 
+	def recursive_content(self):
+		"""
+		Recursively iterates over the content of this section, its sub-sections, etc.
+		:return: a recursive generator of the elements
+		"""
+		for e in self.content:
+			if isinstance(e, HtmlSection):
+				yield from e.recursive_content()
+			else:
+				yield e
+
 	def find(self, f: Callable):
 		"""
 		Finds the first element that matches the given condition.
@@ -120,48 +131,43 @@ class HtmlSection:
 			if f(e):
 				yield e
 
-	def find_sub(self, f: Callable):
+	def recursive_find(self, f: Callable):
 		"""
-		Finds the first sub-section that matches the given condition.
-		:param f: the condition to check against each sub-section
-		:return: the first sub-section that matches, or None
+		Recursively finds the first element that match the given condition.
+		:param f: the condition to check against each element, including the sub-sections
+		:return: the first element that matches, or None
 		"""
-		return self.find(lambda e: isinstance(e, HtmlSection) and f(e))
+		for e in self.content:
+			if f(e):
+				return e
+			elif isinstance(e, HtmlSection):
+				rec = e.recursive_find(f)
+				if rec:
+					return rec
+		return None
 
-	def findall_subs(self, f: Callable):
+	def recursive_findall(self, f: Callable):
 		"""
-		Finds all the sub-sections that match the given condition.
-		:param f: the condition to check against each sub-section
-		:return: a generator that returns the maching sections
+		Recursively finds all the elements that match the given condition.
+		:param f: the condition to check against each element, including the sub-sections
+		:return: a generator that returns the maching elements
 		"""
-		return self.findall(lambda e: isinstance(e, HtmlSection) and f(e))
-
-	def find_tag(self, f: Callable):
-		"""
-		Finds the first non-section tag that matches the given condition.
-		:param f: the condition to check against each tag
-		:return: the first non-section tag that matches, or None
-		"""
-		return self.find(lambda e: not isinstance(e, HtmlSection) and f(e))
-
-	def findall_tags(self, f: Callable):
-		"""
-		Finds all the non-section tags that match the given condition.
-		:param f: the condition to check against each tag
-		:return: a generator that returns the maching tags
-		"""
-		return self.findall(lambda e: not isinstance(e, HtmlSection) and f(e))
+		for e in self.content:
+			if f(e):
+				yield e
+			elif isinstance(e, HtmlSection):
+				yield from e.recursive_findall(f)
 
 	def subs(self):
 		"""
-		Constructs a list of all the sub-sections of this section.
-		:return: a list containing the sub-sections of this section
+		Iterates over all the sub-sections of this section.
+		:return: an iterator of the sub-sections
 		"""
 		return self.findall(lambda e: isinstance(e, HtmlSection))
 
 	def tags(self):
 		"""
-		Constructs a list of all the non-sections tags in this section.
-		:return: a list containing the non-sections tags in this section
+		Iterates over all the non-sections tags in this section.
+		:return: an iterator of the non-sections tags
 		"""
 		return self.findall(lambda e: not isinstance(e, HtmlSection))

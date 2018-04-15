@@ -38,3 +38,9 @@ print_sections(sections)
 protocol_html = requests.get("http://wiki.vg/Protocol").text
 sections = make_hierarchy(protocol_html, True)
 print_sections(sections)
+
+s1 = sections[0]
+search_level = 4
+print("Identified H%ds:" % search_level)
+for h in s1.recursive_findall(lambda e: isinstance(e, HtmlSection) and e.level == search_level):
+	print("%s : \"%s\"" % (str(h.html_id).center(42), h.title))
