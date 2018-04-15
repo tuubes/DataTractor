@@ -4,10 +4,11 @@ from datatractor.utils.html_tools import *
 
 def print_sections(sections):
 	for section in sections:
-		print(str(section).replace("\n", "").strip())
+		print(section)
 		for sub in section.subs():
-			print(">>>", str(sub).replace("\n", "").strip())
-			
+			print(">>>", sub)
+	print("---------------------")
+
 
 html = """
 <body>
@@ -31,9 +32,9 @@ This is more text.
 </div></div>
 </body>
 """
-sections = make_hierarchy(html)
+sections = make_hierarchy(html, True)
 print_sections(sections)
 
-#protocol_html = requests.get("http://wiki.vg/Protocol").text
-#sections = hierarchize_html(protocol_html, 1)
-#print_sections(sections)
+protocol_html = requests.get("http://wiki.vg/Protocol").text
+sections = make_hierarchy(protocol_html, True)
+print_sections(sections)

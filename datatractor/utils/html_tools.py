@@ -6,9 +6,9 @@ from bs4.element import Tag
 headings = ["h1", "h2", "h3", "h4", "h5", "h6"]
 
 
-def make_hierarchy(html: str):
+def make_hierarchy(html: str, trim: bool):
 	soup = BeautifulSoup(html, "lxml")
-	itr = flatten(soup.find("body"))
+	itr = flatten(soup.find("body"), trim)
 	sections = []
 
 	next_heading = None
@@ -31,7 +31,6 @@ def make_section(itr, level, html_id, title):
 	while next_tag:
 		if next_tag.name in headings:
 			next_level, next_html_id, next_title = inspect_heading(next_tag)
-			print("next: ", next_level, next_title, "- current: ", level)
 			if next_level <= level:
 				break
 			else:
@@ -69,12 +68,17 @@ def contains_headings(tag: Tag):
 	return False
 
 
-def flatten(container: Tag):
+def flatten(container: Tag, trim: bool):
 	for c in container.children:
-		if not isinstance(c, NavigableString) and contains_headings(c):
-			yield from flatten(c)
+		if isinstance(c, Tag) and contains_headings(c):
+			yield from flatten(c, trim)
 		else:
-			yield c
+			if trim and isinstance(c, str):
+				trimmed = c.strip()
+				if len(trimmed) > 0:
+					yield NavigableString(trimmed)
+			else:
+				yield c
 
 
 class HtmlSection:
