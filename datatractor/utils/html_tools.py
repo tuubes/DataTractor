@@ -82,9 +82,7 @@ def flatten(container: Tag, trim: bool):
 
 
 class HtmlSection:
-	"""
-	Represent a hierarchized part of an HTML document.
-	"""
+	"""Represents a hierarchized part of an HTML document"""
 
 	def __init__(self, level: int, title: str, html_id: str, content: list):
 		self.level = level
@@ -171,3 +169,47 @@ class HtmlSection:
 		:return: an iterator of the non-sections tags
 		"""
 		return self.findall(lambda e: not isinstance(e, HtmlSection))
+
+
+class HtmlTable:
+	"""Represents an HTML table"""
+
+	def __init__(self, rows):
+		self.rows = rows
+
+	def __str__(self):
+		return "HtmlTable(size=%d, cells=%s)" % (self.cell_count(), list(self.itr_cells()))
+
+	def __repr__(self):
+		return self.__str__()
+
+	def row_count(self):
+		return len(self.rows)
+
+	def column_count(self):
+		if self.row_count() > 0:
+			return len(self.rows[0])
+		else:
+			return 0
+
+	def cell_count(self):
+		return self.row_count() * self.column_count()
+
+	def itr_rows(self):
+		for row in self.rows:
+			yield iter(row)
+
+	def itr_columns(self):
+		for j in range(0, self.column_count()):
+			yield (self.rows[i][j] for i in range(0, self.row_count()))
+
+	def itr_cells(self):
+		for i in range(0, self.row_count()):
+			for j in range(0, self.column_count()):
+				yield self.rows[i][j]
+
+	def find(self, f: Callable):
+		for cell in self.itr_cells():
+			if f(cell):
+				return cell
+		return None
