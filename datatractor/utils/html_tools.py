@@ -1,52 +1,80 @@
-from bs4 import BeautifulSoup, element
 from typing import Callable
 
-def hierarchize_html(html: str, first_level: int, through_div: bool):
-	soup = BeautifulSoup(html, "lxml")
+from bs4 import BeautifulSoup, NavigableString
+from bs4.element import Tag
 
+headings = ["h1", "h2", "h3", "h4", "h5", "h6"]
+
+
+def make_hierarchy(html: str):
+	soup = BeautifulSoup(html, "lxml")
+	itr = flatten(soup.find("body"))
 	sections = []
-	for h in soup.find_all("h%d" % first_level):
-		section = build_hierarchy(h, first_level, through_div)
+
+	next_heading = None
+	for tag in itr:
+		if tag.name in headings:
+			next_heading = tag
+			break
+
+	while next_heading:
+		level, html_id, title = inspect_heading(next_heading)
+		section, next_heading = make_section(itr, level, html_id, title)
 		sections.append(section)
+
 	return sections
 
 
-def build_hierarchy(h_tag: element.Tag, h_level: int, through_div: bool):
-	h_level_next = h_level + 1
-	h_current = "h%d" % h_level
-	h_sub = "h%d" % h_level_next
-
-	html_id = h_tag["id"] if h_tag.has_attr("id") else None
-	span_tag = h_tag.find("span")
-	if span_tag is not None:
-		title = span_tag.contents[0]
-		if html_id is None:
-			html_id = span_tag["id"] if span_tag.has_attr("id") else None
-	else:
-		title = h_tag.contents[0]
-
+def make_section(itr, level, html_id, title):
 	content = []
-	## TODO go through divs that contain h titles and add divs that don't as normal tags
-	for tag in h_tag.find_next_siblings():
-		if tag.name == h_current:  # end of the section
-			break
-
-		if tag.name == h_sub:  # sub-section
-			content.append(build_hierarchy(tag, h_level_next, through_div))
-		elif tag.name == "div" and through_div: # div
-			go_through_div(tag, content)
+	next_tag = next(itr, None)
+	while next_tag:
+		if next_tag.name in headings:
+			next_level, next_html_id, next_title = inspect_heading(next_tag)
+			print("next: ", next_level, next_title, "- current: ", level)
+			if next_level <= level:
+				break
+			else:
+				section, next_tag = make_section(itr, next_level, next_html_id, next_title)
+				content.append(section)
 		else:
-			content.append(tag)
+			content.append(next_tag)
+			next_tag = next(itr, None)
 
-	return HtmlSection(h_level, title, html_id, content)
+	return HtmlSection(level, title, html_id, content), next_tag
 
 
-def go_through_div(div: element.Tag, dest: list):
-	for tag in div.contents:
-		if tag.name == "div":
-			go_through_div(tag, dest)
+def inspect_heading(h: Tag):
+	level = int(h.name[1])  # for ex. gets the "2" in "h2"
+	html_id = None
+	title = None
+	if h.has_attr("id"):
+		html_id = h["id"]
+	if len(h.contents) > 0:
+		c0 = h.contents[0]
+		if isinstance(c0, Tag):  # if we have for ex. <h2><span id="some_id">some name</span></h2>
+			if html_id is None and c0.has_attr("id"):
+				html_id = c0["id"]
+			if len(c0.contents) > 0:
+				title = c0.contents[0]
 		else:
-			dest.append(tag)
+			title = c0
+	return level, html_id, title
+
+
+def contains_headings(tag: Tag):
+	for heading in headings:
+		if tag.find(heading):
+			return True
+	return False
+
+
+def flatten(container: Tag):
+	for c in container.children:
+		if not isinstance(c, NavigableString) and contains_headings(c):
+			yield from flatten(c)
+		else:
+			yield c
 
 
 class HtmlSection:
@@ -61,7 +89,8 @@ class HtmlSection:
 		self.content = content
 
 	def __str__(self):
-		return "HtmlSection(level=%d, id=%s, title=%s, content=%d:%s)" % (self.level, self.title, self.html_id, len(self.content), str(self.content).replace("\n", ""))
+		return "HtmlSection(level=%d, id=%s, title=%s, content=%d:%s)" % (
+			self.level, self.html_id, self.title, len(self.content), str(self.content).replace("\n", ""))
 
 	def __repr__(self):
 		return self.__str__()
