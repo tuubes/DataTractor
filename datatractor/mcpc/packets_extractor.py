@@ -40,7 +40,7 @@ def find_documentation(game_version: str):
 			except:
 				protocol_number = None
 			doc_link = row[2]
-			if release_name == game_version and doc_link is not None and protocol_number is not None:
+			if (release_name == game_version) and (doc_link is not None) and (protocol_number is not None):
 				url = doc_link["href"]
 				if url[0] == "/":
 					url = "%s%s" % ("http://wiki.vg", url)
@@ -68,8 +68,8 @@ def extract_subprotocol(s: HtmlSection):
 	s_clientbound = s.sub_title("Clientbound")
 	s_serverbound = s.sub_title("Serverbound")
 
-	cb = [] if s_clientbound is None else [extract_packet(section) for section in s_clientbound.subs()]
-	sb = [] if s_serverbound is None else [extract_packet(section) for section in s_serverbound.subs()]
+	cb = [] if (s_clientbound is None) else [extract_packet(section) for section in s_clientbound.subs()]
+	sb = [] if (s_serverbound is None) else [extract_packet(section) for section in s_serverbound.subs()]
 	return SubProtocol(subprotocol_name, cb, sb)
 
 

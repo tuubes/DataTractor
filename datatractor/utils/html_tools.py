@@ -121,7 +121,7 @@ def parse_table(table: Tag, trim: bool):
 	i = 0
 	for tr in table.find_all("tr"):
 		j = 0
-		while j < col_count and rows[i][j] is not None:
+		while (j < col_count) and (rows[i][j] is not None):
 			j += 1
 
 		for td in tr.find_all(["th", "td"]):
