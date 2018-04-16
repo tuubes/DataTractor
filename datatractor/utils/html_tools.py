@@ -7,9 +7,12 @@ headings = ["h1", "h2", "h3", "h4", "h5", "h6"]
 
 
 def get_text(element):
-	if isinstance(element, list) and len(element) == 1:
-		return get_text(element[0])
-	if isinstance(element, Tag):
+	if isinstance(element, list):
+		if len(element) == 1:
+			return get_text(element[0])
+		else:
+			return " ".join((get_text(e) for e in element))
+	elif isinstance(element, Tag):
 		return get_text(element.contents)
 	else:
 		return str(element)
