@@ -21,6 +21,8 @@ def scala_type(field_type: str):
 		#return "AnyRef"
 	if t == "angle":
 		return "Byte"
+	if t == "no fields" or t == "no field":
+		return "Nothing"
 
 	if t.startswith("optional"):
 		x = t[9:]
