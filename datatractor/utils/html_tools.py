@@ -7,6 +7,7 @@ headings = ["h1", "h2", "h3", "h4", "h5", "h6"]
 
 
 def make_hierarchy(html: str, trim: bool):
+	"""Organizes an HTML document according to its headings (h1, h2, etc.)."""
 	soup = BeautifulSoup(html, "lxml")
 	itr = flatten(soup.find("body"), trim)
 	sections = []
@@ -26,6 +27,7 @@ def make_hierarchy(html: str, trim: bool):
 
 
 def make_section(itr, level, html_id, title):
+	"""Creates an HtmlSection whose content starts at the next tag given by itr."""
 	content = []
 	next_tag = next(itr, None)
 	while next_tag:
@@ -44,6 +46,7 @@ def make_section(itr, level, html_id, title):
 
 
 def inspect_heading(h: Tag):
+	"""Extracts the informations about an html heading tag."""
 	level = int(h.name[1])  # for ex. gets the "2" in "h2"
 	html_id = None
 	title = None
@@ -62,6 +65,7 @@ def inspect_heading(h: Tag):
 
 
 def contains_headings(tag: Tag):
+	"""Returns true if the tag contains an html heading."""
 	for heading in headings:
 		if tag.find(heading):
 			return True
@@ -69,6 +73,7 @@ def contains_headings(tag: Tag):
 
 
 def flatten(container: Tag, trim: bool):
+	"""Iterates over the children of the container, flattening the <div> tags and parsing the <table> tags."""
 	for c in container.children:
 		if isinstance(c, Tag) and contains_headings(c):
 			yield from flatten(c, trim)
@@ -84,6 +89,7 @@ def flatten(container: Tag, trim: bool):
 
 
 def parse_table(table: Tag, trim: bool):
+	"""Parses a <table></table> and produces an HtmlTable."""
 	row_count = 0
 	col_count = 0
 	for tr in table.find_all("tr"):
@@ -231,6 +237,9 @@ class HtmlTable:
 	def name(self):
 		return None
 
+	def get(self, row, column):
+		return self.rows[row][column]
+
 	def row_count(self):
 		return len(self.rows)
 
@@ -244,19 +253,23 @@ class HtmlTable:
 		return self.row_count() * self.column_count()
 
 	def itr_rows(self):
+		"""Iterates over the rows"""
 		for row in self.rows:
 			yield iter(row)
 
 	def itr_columns(self):
+		"""Iterates over the columns"""
 		for j in range(0, self.column_count()):
 			yield (self.rows[i][j] for i in range(0, self.row_count()))
 
 	def itr_cells(self):
+		"""Iterates over the cells, row by row"""
 		for i in range(0, self.row_count()):
 			for j in range(0, self.column_count()):
 				yield self.rows[i][j]
 
 	def find(self, f: Callable):
+		"""Finds the first cell that satisfies the given condition"""
 		for cell in self.itr_cells():
 			if f(cell):
 				return cell
