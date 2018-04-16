@@ -2,8 +2,12 @@ from datatractor.main.packets_extractor import Packet
 from datatractor.utils.string_tools import *
 
 
-def scala_type(field_type: str):
-	"""Returns the scala type corresponding to the given packet field type."""
+def scala_type(field_type: str) -> str:
+	"""
+	Returns the Scala type that corresponds to the given packet field type.
+	:param field_type: the (non-scala) field's type
+	:return: the corresponding Scala type
+	"""
 	t: str = field_type.lower().replace("enum", "").strip()
 	same = ["boolean", "byte", "short", "int", "long", "float", "double", "string"]
 	as_str = ["chat", "identifier"]
@@ -47,7 +51,12 @@ def scala_type(field_type: str):
 	return "???"
 
 
-def niol_write(field_type: str):
+def niol_write(field_type: str) -> str:
+	"""
+	Generates a Scala statement that writes the given field.
+	:param field_type: the (non-scala) field's type
+	:return: a code that writes the field
+	"""
 	t: str = field_type.lower().replace("enum", "").strip()
 	simple_dict = {
 		"boolean": "out.putBoolean($)",
@@ -83,7 +92,13 @@ def niol_write(field_type: str):
 	return "// TODO write $"
 
 
-def niol_read(field_type: str, prefix: str = "val "):
+def niol_read(field_type: str, prefix: str = "val ") -> str:
+	"""
+	Generates a Scala statement that reads the given field.
+	:param field_type: the (non-scala) field's type
+	:param prefix: the prefix to append before the assignation of the value
+	:return: a code that reads the field
+	"""
 	t: str = field_type.lower().replace("enum", "").strip()
 	simple_dict = {
 		"boolean": prefix + "$ = in.getBoolean()",
@@ -108,7 +123,12 @@ def niol_read(field_type: str, prefix: str = "val "):
 	return "// TODO read $"
 
 
-def generate_packet_class(p: Packet):
+def generate_packet_class(p: Packet) -> (str, str):
+	"""
+	Generates scala classes from packet data.
+	:param p: the packet
+	:return: the name of the generated class, and the generated class (as a string)
+	"""
 	pname = p.name + "Packet"
 	bname = pname + "Builder"
 	decl = []
