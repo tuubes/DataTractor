@@ -90,7 +90,7 @@ class Protocol:
 
 	def __repr__(self):
 		return "Protocol(%s, %d, handshake:%s, play:%s, status:%s, login:%s)" % (
-			self.game_version, self.number, self.handshake, self.play, self.status, self.login)
+			self.game_version, self.number, repr(self.handshake), repr(self.play), repr(self.status), repr(self.login))
 
 	def __str__(self):
 		return "Protocol(%s, %d, %s, %s, %s, %s)" % (
@@ -145,6 +145,12 @@ class Packet:
 		self.id = int(id_str, 0)
 		self.fields = fields
 
+	def __repr__(self):
+		return "Packet(%s, %s, %s)" % (self.name, self.id, repr(self.fields))
+
+	def __str__(self):
+		return "Packet(%s, %s, %d fields)" % (self.name, self.id, len(self.fields))
+
 
 class Field:
 	"""Represents a packet's field."""
@@ -155,3 +161,9 @@ class Field:
 		self.name = to_camel_case(self.name_snake)
 		self.type = type_str
 		self.comment = comment
+
+	def __repr__(self):
+		return "Field(%s, %s, %s)" % (self.name, self.type, self.comment)
+
+	def __str__(self):
+		return "Field(%s, %s)" % (self.name, self.type)
