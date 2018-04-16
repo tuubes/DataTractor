@@ -7,4 +7,8 @@ print(repr(protocol))
 for packet in protocol.play.clientbound:
 	print("====", packet.name, "====")
 	for field in packet.fields:
-		print(field.name, ":", scala_writer.scala_type(field.type))
+		comment = "" if (field.comment is None) else field.comment
+		stype = scala_writer.scala_type(field.type)
+		a = "%s : %s" % (field.name, stype)
+		aligned = a + " " * (max(0, 30 - len(a)))
+		print("%s || %s" % (aligned, comment))
