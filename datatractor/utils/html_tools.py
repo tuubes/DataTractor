@@ -13,7 +13,7 @@ def get_text(element):
 		if len(element) == 1:
 			return get_text(element[0])
 		else:
-			return " ".join((get_text(e) for e in element))
+			return ", ".join((v for v in (get_text(e) for e in element) if v is not None))
 	elif isinstance(element, Tag):
 		return get_text(element.contents)
 	else:

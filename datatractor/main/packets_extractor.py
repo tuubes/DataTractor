@@ -82,10 +82,15 @@ def extract_packet(section: HtmlSection):
 	name_col = None
 	type_col = None
 	comment_col = None
+	comment_cols = []
 	for j in range(table.column_count() - 1, -1, -1):
 		cell = table.get(0, j)
-		if (cell.lower() == "field name") and (name_col is None):
-			name_col = j
+		if cell.lower() == "field name":
+			if name_col is None:
+				name_col = j
+			else:
+				# adds any additional information as a comment:
+				comment_cols.append(j)
 		if (cell.lower() == "field type") and (type_col is None):
 			type_col = j
 		if (cell.lower() == "notes") and (comment_col is None):
@@ -94,12 +99,13 @@ def extract_packet(section: HtmlSection):
 	name_col = 3 if (name_col is None) else name_col
 	type_col = 4 if (type_col is None) else type_col
 	comment_col = 5 if (comment_col is None) else comment_col
+	comment_cols.append(comment_col)
 
 	# Parses the table
 	for row in table.rows[1:]:  # [1:] to skip the header
 		field_name = get_text(row[name_col])
 		field_type = get_text(row[type_col])
-		field_comment = get_text(row[comment_col])
+		field_comment = get_text([row[j] for j in comment_cols])
 		# DEBUG print("row: %s, %s, %s" % (field_name, field_type, field_comment))
 		if field_type:
 			field = Field(field_name, field_type, field_comment)
