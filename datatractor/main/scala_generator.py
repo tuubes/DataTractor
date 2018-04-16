@@ -76,7 +76,7 @@ def niol_write(field_type: str):
 	if t.startswith("optional "):
 		x = t[9:]
 		write_x = niol_write(x)
-		return "if($.isDefined) { %s }" % write_x
+		return "if ($.isDefined) {\n\t\t\t%s\n\t\t}" % write_x
 
 	# TODO support more data types
 
