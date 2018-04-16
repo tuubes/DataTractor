@@ -3,7 +3,7 @@ def scala_type(field_type: str):
 	same = ["boolean", "byte", "short", "int", "long", "float", "double", "string", "uuid"]
 	as_str = ["chat", "identifier"]
 	if t in same:
-		return field_type
+		return t.title()
 	if ("string" in t) or (t in as_str):
 		return "String"
 	if t == "varint":
