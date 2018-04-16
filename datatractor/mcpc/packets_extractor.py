@@ -55,8 +55,8 @@ def extract_subprotocol(s: HtmlSection):
 	s_clientbound = s.sub_title("Clientbound")
 	s_serverbound = s.sub_title("Serverbound")
 
-	cb = [extract_packet(section) for section in s_clientbound.subs()]
-	sb = [extract_packet(section) for section in s_serverbound.subs()]
+	cb = [] if s_clientbound is None else [extract_packet(section) for section in s_clientbound.subs()]
+	sb = [] if s_serverbound is None else [extract_packet(section) for section in s_serverbound.subs()]
 	return SubProtocol(subprotocol_name, cb, sb)
 
 
