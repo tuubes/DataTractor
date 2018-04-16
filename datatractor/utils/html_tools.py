@@ -6,7 +6,16 @@ from bs4.element import Tag
 headings = ["h1", "h2", "h3", "h4", "h5", "h6"]
 
 
-def make_hierarchy(html: str, trim: bool):
+def get_text(element):
+	if isinstance(element, list) and len(element) == 1:
+		return get_text(element[0])
+	if isinstance(element, Tag):
+		return get_text(element.contents)
+	else:
+		return str(element)
+
+
+def make_hierarchy(html: str, trim: bool = True):
 	"""Organizes an HTML document according to its headings (h1, h2, etc.)."""
 	soup = BeautifulSoup(html, "lxml")
 	itr = flatten(soup.find("body"), trim)
@@ -75,9 +84,10 @@ def contains_headings(tag: Tag):
 def flatten(container: Tag, trim: bool):
 	"""Iterates over the children of the container, flattening the <div> tags and parsing the <table> tags."""
 	for c in container.children:
-		if isinstance(c, Tag) and contains_headings(c):
+		is_tag = isinstance(c, Tag)
+		if is_tag and contains_headings(c):
 			yield from flatten(c, trim)
-		elif isinstance(c, Tag) and c.name == "table":
+		elif is_tag and c.name == "table":
 			yield parse_table(c, trim)
 		else:
 			if trim and isinstance(c, str):
@@ -113,10 +123,21 @@ def parse_table(table: Tag, trim: bool):
 
 		for td in tr.find_all(["th", "td"]):
 			cell = td.contents
+			if trim:
+				clean_cell = []
+				for e in cell:
+					if isinstance(e, str):
+						trimmed = e.strip()
+						if len(trimmed) > 0:
+							clean_cell.append(NavigableString(trimmed))
+					else:
+						clean_cell.append(e)
+				cell = clean_cell
 			if len(cell) == 1:
 				cell = cell[0]
 			elif len(cell) == 0:
 				cell = None
+
 			if trim and isinstance(cell, str):
 				trimmed = cell.strip()
 				cell = NavigableString(trimmed) if len(trimmed) > 0 else None
@@ -220,6 +241,14 @@ class HtmlSection:
 		"""
 		return self.findall(lambda e: not isinstance(e, HtmlSection))
 
+	def sub_id(self, html_id: str):
+		"""Finds the sub-section with the given id."""
+		return self.find(lambda e: isinstance(e, HtmlSection) and e.html_id == html_id)
+
+	def sub_title(self, title: str):
+		"""Finds the sub-section with the given title."""
+		return self.find(lambda e: isinstance(e, HtmlSection) and e.title == title)
+
 
 class HtmlTable:
 	"""Represents an HTML table"""
@@ -268,9 +297,16 @@ class HtmlTable:
 			for j in range(0, self.column_count()):
 				yield self.rows[i][j]
 
-	def find(self, f: Callable):
-		"""Finds the first cell that satisfies the given condition"""
+	def find_cell(self, f: Callable):
+		"""Finds the first cell that satisfies the given condition."""
 		for cell in self.itr_cells():
 			if f(cell):
 				return cell
+		return None
+
+	def find_row(self, f: Callable):
+		"""Finds the first row that satisfies the given condition."""
+		for row in self.rows:
+			if f(row):
+				return row
 		return None
