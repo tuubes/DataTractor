@@ -105,7 +105,7 @@ def extract_packet(section: HtmlSection):
 	for row in table.rows[1:]:  # [1:] to skip the header
 		field_name = get_text(row[name_col])
 		field_type = get_text(row[type_col])
-		field_comment = get_text([row[j] for j in comment_cols])
+		field_comment = get_text([row[j] for j in comment_cols], "; ")
 		# DEBUG print("row: %s, %s, %s" % (field_name, field_type, field_comment))
 		if field_type:
 			field = Field(field_name, field_type, field_comment)

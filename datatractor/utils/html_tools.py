@@ -6,14 +6,14 @@ from bs4.element import Tag
 headings = ["h1", "h2", "h3", "h4", "h5", "h6"]
 
 
-def get_text(element):
+def get_text(element, joiner=" "):
 	if element is None:
 		return None
 	elif isinstance(element, list):
 		if len(element) == 1:
 			return get_text(element[0])
 		else:
-			return ", ".join((v for v in (get_text(e) for e in element) if v is not None))
+			return joiner.join((v for v in (get_text(e) for e in element) if v is not None))
 	elif isinstance(element, Tag):
 		return get_text(element.contents)
 	else:
