@@ -1,5 +1,5 @@
 from datatractor.mcpc import packets_extractor
 
-packets_extractor.extract_packets("1.10.2")
-protocol = packets_extractor.extract_packets("1.12.2")
+game_version = input("Game Version: ").strip()
+protocol = packets_extractor.extract_packets(game_version)
 print(repr(protocol))
