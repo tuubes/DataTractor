@@ -172,7 +172,7 @@ class Packet:
 
 	def __init__(self, name_str, id_str, fields):
 		self.name_snake = to_snake_case(name_str)
-		self.name = to_camel_case(self.name_snake)
+		self.name = to_pascal_case(self.name_snake)
 		self.id = int(id_str, 0)
 		self.fields = fields
 

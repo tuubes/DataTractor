@@ -4,6 +4,12 @@ def to_camel_case(snake_str: str):
 	return parts[0] + ''.join(x.title() for x in parts[1:])
 
 
+def to_pascal_case(snake_str: str):
+	# Converts snake_case to PascalCase by capitalizing the first letter of each part
+	parts = snake_str.split('_')
+	return ''.join(x.title() for x in parts)
+
+
 def to_snake_case(s: str):
 	return s.lower().replace(" ", "_")
 
