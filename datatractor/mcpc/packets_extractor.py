@@ -5,14 +5,27 @@ from datatractor.utils.string_tools import *
 
 def extract_packets(game_version: str):
 	"""Extracts packet data from wiki.vg"""
+	print("Looking for the documentation of protocol", game_version, "...")
 	url, protocol_number = find_documentation(game_version)
-	print(url)
-	print(protocol_number)
 
+	if url is None:
+		print("No result found!")
+		return None
+
+	print("Found url:", url)
+	print("Protocol number:", protocol_number)
+
+	print("Downloading the documentation...")
 	protocol_html = requests.get(url).text
+
+	print("Organizing the data...")
 	sections = make_hierarchy(protocol_html)
 	root = sections[0]
-	return extract_protocol(root, game_version, protocol_number)
+
+	print("Analysing the protocol...")
+	protocol = extract_protocol(root, game_version, protocol_number)
+	print("Done!")
+	return protocol
 
 
 def find_documentation(game_version: str):
