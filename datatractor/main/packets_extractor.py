@@ -74,18 +74,37 @@ def extract_subprotocol(s: HtmlSection):
 
 
 def extract_packet(section: HtmlSection):
-	table = section.find(lambda e: isinstance(e, HtmlTable))
+	table: HtmlTable = section.find(lambda e: isinstance(e, HtmlTable))
 	packet_name = section.title
 	packet_id = table.get(1, 0)
 	packet_fields = []
+	# Analyses the header
+	name_col = None
+	type_col = None
+	comment_col = None
+	for j in range(table.column_count() - 1, -1, -1):
+		cell = table.get(0, j)
+		if (cell.lower() == "field name") and (name_col is None):
+			name_col = j
+		if (cell.lower() == "field type") and (type_col is None):
+			type_col = j
+		if (cell.lower() == "notes") and (comment_col is None):
+			comment_col = j
+
+	name_col = 3 if (name_col is None) else name_col
+	type_col = 4 if (type_col is None) else type_col
+	comment_col = 5 if (comment_col is None) else comment_col
+
+	# Parses the table
 	for row in table.rows[1:]:  # [1:] to skip the header
-		field_name = row[3]
-		field_type = row[4]
-		field_comment = get_text(row[5])
+		field_name = get_text(row[name_col])
+		field_type = get_text(row[type_col])
+		field_comment = get_text(row[comment_col])
 		# DEBUG print("row: %s, %s, %s" % (field_name, field_type, field_comment))
-		if isinstance(field_name, str):
+		if field_type:
 			field = Field(field_name, field_type, field_comment)
 			packet_fields.append(field)
+			# DEBUG print(field)
 	return Packet(packet_name, packet_id, packet_fields)
 
 

@@ -7,7 +7,9 @@ headings = ["h1", "h2", "h3", "h4", "h5", "h6"]
 
 
 def get_text(element):
-	if isinstance(element, list):
+	if element is None:
+		return None
+	elif isinstance(element, list):
 		if len(element) == 1:
 			return get_text(element[0])
 		else:
@@ -109,22 +111,28 @@ def parse_table(table: Tag, trim: bool):
 		row_count += 1
 		if row_count == 1:
 			for td in tr.find_all(["th", "td"]):
-				col_count += 1
+				if td.has_attr("colspan"):
+					col_count += int(td["colspan"])
+				else:
+					col_count += 1
 
 	rows = []
+	empty_value = ""
 	for i in range(0, row_count):
 		row = []
 		for j in range(0, col_count):
-			row.append(None)
+			row.append(empty_value)
 		rows.append(row)
 
 	i = 0
 	for tr in table.find_all("tr"):
 		j = 0
-		while (j < col_count) and (rows[i][j] is not None):
-			j += 1
-
 		for td in tr.find_all(["th", "td"]):
+			# Skips already populated cells, eg by rowspan or colspan
+			while (j < col_count) and (rows[i][j] is not empty_value):
+				j += 1
+
+			# Gets cell content and trims it if required
 			cell = td.contents
 			if trim:
 				clean_cell = []
@@ -145,12 +153,14 @@ def parse_table(table: Tag, trim: bool):
 				trimmed = cell.strip()
 				cell = NavigableString(trimmed) if len(trimmed) > 0 else None
 
+			# Populates the cell(s) and respects rowspan and colspan if present
 			ispan = int(td["rowspan"]) if td.has_attr("rowspan") else 1
 			jspan = int(td["colspan"]) if td.has_attr("colspan") else 1
 			for xi in range(i, min(i + ispan, row_count)):
 				for xj in range(j, min(j + jspan, col_count)):
 					rows[xi][xj] = cell
-			j += 1
+
+			j += jspan
 		i += 1
 	return HtmlTable(rows)
 
