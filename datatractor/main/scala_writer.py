@@ -10,15 +10,15 @@ def scala_type(field_type: str):
 		return "Int"
 	if (t == "varlong") or (t == "position"):
 		return "Long"
-	#if t == "entity metadata":
+	if t == "entity metadata":
 		# TODO support EntityMetadata storage
-		#return "AnyRef"
-	#if t == "slot":
+		return "AnyRef"
+	if t == "slot":
 		# TODO support items slots
-		#return "AnyRef"
-	#if t == "nbt tag":
+		return "AnyRef"
+	if t == "nbt tag":
 		# TODO support nbt tags
-		#return "AnyRef"
+		return "AnyRef"
 	if t == "angle":
 		return "Byte"
 	if t == "no fields" or t == "no field":
@@ -37,5 +37,4 @@ def scala_type(field_type: str):
 		scala_x = scala_type(x)
 		return "Array[%s]" % scala_x
 
-	print("Unknown/Unsupported type:", t)
-	return "AnyRef"
+	return "???"
