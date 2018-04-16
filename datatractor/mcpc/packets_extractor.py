@@ -12,8 +12,7 @@ def extract_packets(game_version: str):
 	protocol_html = requests.get(url).text
 	sections = make_hierarchy(protocol_html)
 	root = sections[0]
-	protocol = extract_protocol(root, game_version, protocol_number)
-	print(protocol)
+	return extract_protocol(root, game_version, protocol_number)
 
 
 def find_documentation(game_version: str):
