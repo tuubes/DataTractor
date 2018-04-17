@@ -33,11 +33,11 @@ This is more text.
 </div></div>
 </body>
 """
-sections = make_hierarchy(html, True)
+sections = make_hierarchy(BeautifulSoup(html), True)
 print_sections(sections)
 
 protocol_html = requests.get("http://wiki.vg/Protocol").text
-sections = make_hierarchy(protocol_html, True)
+sections = make_hierarchy(BeautifulSoup(protocol_html), True)
 print_sections(sections)
 
 s1 = sections[0]

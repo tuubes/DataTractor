@@ -35,9 +35,8 @@ def get_link(element):
 		return None
 
 
-def make_hierarchy(html: str, trim: bool = True):
+def make_hierarchy(soup: BeautifulSoup, trim: bool = True):
 	"""Organizes an HTML document according to its headings (h1, h2, etc.)."""
-	soup = BeautifulSoup(html, "lxml")
 	itr = flatten(soup.find("body"), trim)
 	sections = []
 
