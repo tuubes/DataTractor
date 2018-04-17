@@ -22,14 +22,27 @@ def extract_blocks_from_table(date_limit: date, table: HtmlTable, dest: list):
 		nice_raw = row[4][0] if isinstance(row[4], list) else row[4]
 		block_nice_name = get_text(nice_raw)
 		block_page = get_link(row[4])
+
+		if block_page is None:
+			print("WARNING - No page found for block '%s' %s %s" % (block_nice_name, block_mc_name, block_id))
+			continue
+
 		# Remove sub-parts if any:
 		if "#" in block_page:
 			block_page = block_page.split("#")[0]
+		if block_page.startswith("/"):
+			block_page = block_page[1:]
+
 		# Gets the final url:
 		block_url = find_revision_url(block_page, date_limit)
 
 		# DEBUG
-		print("Extracting block %s with %s" % (block_mc_name, block_url))
+		if block_url is None:
+			print("WARNING - No url found for block %s, page %s" % (block_mc_name, block_page))
+			continue
+		else:
+			print("Extracting block '%s':'%s' with page %s -> %s" % (
+				block_nice_name, block_mc_name, block_page, block_url))
 
 		# Constructs the blog:
 		block = gather_block_infos(block_id, block_mc_name, block_nice_name, block_url)
