@@ -38,11 +38,10 @@ def extract_release_infos(game_version: str, major_only: bool):
 	return None, None, None  # not found
 
 
-def get_revision_url(page_title: str, after_date: date, before_date: date):
+def get_revision_url(page_title: str, before_date: date):
 	"""
-	Searches the most up-to-date revision of the given page between the given dates.
+	Searches the most up-to-date revision of the given page before the given date.
 	:param page_title: the page to search
-	:param after_date: the date to search after
 	:param before_date: the date to search before
 	:return: the URL pointing to the corresponding revision of the page, or None if not found
 	"""
@@ -60,7 +59,7 @@ def get_revision_url(page_title: str, after_date: date, before_date: date):
 	for revision in soup.find_all("a", {"class": "mw-changeslist-date"}):
 		revision_date = datetime.strptime(get_text(revision), date_format).date()
 		# DEBUG print(page_title, revision_date)
-		if after_date < revision_date < before_date:
+		if revision_date < before_date:
 			link = revision["href"]
 			return (wiki_url + link) if link.startswith("/") else link
 	return None
