@@ -20,6 +20,21 @@ def get_text(element, joiner=" "):
 		return str(element)
 
 
+def get_link(element):
+	if element is None:
+		return None
+	elif isinstance(element, list):
+		for e in element:
+			link = get_link(e)
+			if link is not None:
+				return link
+		return None
+	elif isinstance(element, Tag) and element.has_attr("href"):
+		return element["href"]
+	else:
+		return None
+
+
 def make_hierarchy(html: str, trim: bool = True):
 	"""Organizes an HTML document according to its headings (h1, h2, etc.)."""
 	soup = BeautifulSoup(html, "lxml")
@@ -175,11 +190,12 @@ class HtmlSection:
 		self.content = content
 
 	def __str__(self):
-		return "HtmlSection(level=%d, id=%s, title=%s, content=%d:%s)" % (
-			self.level, self.html_id, self.title, len(self.content), str(self.content).replace("\n", ""))
+		return "HtmlSection(level=%d, id=%s, title=%s, content_length=%d)" % (
+			self.level, self.html_id, self.title, len(self.content))
 
 	def __repr__(self):
-		return self.__str__()
+		return "HtmlSection(level=%d, id=%s, title=%s, content=%d:%s)" % (
+			self.level, self.html_id, self.title, len(self.content), str(self.content).replace("\n", ""))
 
 	def recursive_content(self):
 		"""
