@@ -1,5 +1,3 @@
-import requests_cache
-
 from datatractor.utils.gamepedia_wiki_tools import *
 
 requests_cache.install_cache("out/http_cache", "sqlite", 300)

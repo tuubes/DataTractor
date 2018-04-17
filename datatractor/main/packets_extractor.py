@@ -1,6 +1,9 @@
-import requests, re
+import re
+import requests
+
 from datatractor.utils.html_tools import *
 from datatractor.utils.string_tools import *
+
 
 def extract_packets(game_version: str):
 	"""Extracts packet data from wiki.vg"""
