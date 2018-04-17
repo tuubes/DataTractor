@@ -99,12 +99,15 @@ def contains_headings(tag: Tag):
 			return True
 	return False
 
+def contains_table(tag: Tag):
+	"""Returns true if the tag contains an html table."""
+	return tag.find("table")
 
 def flatten(container: Tag, trim: bool):
 	"""Iterates over the children of the container, flattening the <div> tags and parsing the <table> tags."""
 	for c in container.children:
 		is_tag = isinstance(c, Tag)
-		if is_tag and contains_headings(c):
+		if is_tag and (contains_headings(c) or contains_table(c)):
 			yield from flatten(c, trim)
 		elif is_tag and c.name == "table":
 			yield parse_table(c, trim)
