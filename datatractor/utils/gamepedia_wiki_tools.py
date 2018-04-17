@@ -1,8 +1,8 @@
 import re
 from datetime import date, datetime
 
-import time
 import requests
+import requests_cache
 
 from datatractor.utils.html_tools import *
 
@@ -49,6 +49,11 @@ def get_revision_url(page_title: str, after_date: date, before_date: date):
 	history_url = "%s/index.php?title=%s&action=history&year=%s&month=%s&tagfilter=" % (
 		wiki_url, page_title, before_date.year, before_date.month)
 	html = requests.get(history_url).text
+	while not html:
+		# This request sometimes returns an empty string, for no apparent reason.
+		# In that case, we clear the cache and do the request again.
+		requests_cache.clear()
+		html = requests.get(history_url).text
 	soup = BeautifulSoup(html, "lxml")
 	date_format = "%H:%M, %d %B %Y"
 
