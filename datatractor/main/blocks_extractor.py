@@ -141,6 +141,12 @@ class DataValue:
 		self.value = value
 		self.description = description
 
+	def __str__(self):
+		return "DataValue(%s, %s)" % (self.value, self.description)
+
+	def __repr__(self):
+		return self.__str__()
+
 
 def as_bool(p: dict, k: str, default: bool):
 	v = get_text(p.get(k))
