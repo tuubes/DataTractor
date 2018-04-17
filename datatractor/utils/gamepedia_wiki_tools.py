@@ -5,7 +5,35 @@ from datatractor.utils.html_tools import *
 from datatractor.utils.http_tools import *
 
 wiki_url = "https://minecraft.gamepedia.com"
+redirections = {
+	"Flowers": "Flower",
+	"Iron_Door": "Door",
+	"Sugar_Cane": "Sugar_Canes",
+	"Oak_Fence": "Fence",
+	"Nether_Brick_Fence": "Fence",
+	"Stained_Glass": "Glass",
+	"Slabs": "Slab",
+	"Weighted_Pressure_Plate": "Pressure_Plate",
+	"Stained_Clay": "Terracotta",
+	"Hardened_Clay": "Terracotta",
+	"Stained_Glass_Pane": "Glass_Pane",
+	"Iron_Trapdoor": "Trapdoor",
+	"Red_Sandstone": "Sandstone",
+	"Repeating_Command_Block": "Command_Block",
+	"Chain_Command_Block": "Command_Block",
+	"Red_Nether_Brick": "Nether_Brick",
+	"Structure_Void": "Structure Block",
+}
 
+_colors = ["White", "Orange", "Magenta", "Green", "Cyan", "Blue", "Light_Blue", "Yellow", "Red", "Purple", "Pink", "Lime", "Gray", "Light_Gray", "Brown", "Black"]
+
+def redirect_many(pattern: str, redirect: str, values: list):
+	for v in values:
+		key = pattern.replace("$", v)
+		redirections[key] = redirect
+
+redirect_many("$_Shulker_Box", "Shulker_Box", _colors)
+redirect_many("$_Glazed_Terracotta", "Glazed_Terracotta", _colors)
 
 def extract_release_infos(game_version: str, major_only: bool):
 	"""
@@ -65,6 +93,10 @@ def find_revision_url(page_title: str, before_date: date):
 		if revision_date < before_date:
 			return page_url(revision["href"])
 	return None
+
+
+def real_page(page_title: str):
+	return redirections.get(page_title, page_title)
 
 
 def page_url(page_title: str):

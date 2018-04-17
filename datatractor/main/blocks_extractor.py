@@ -34,7 +34,7 @@ def extract_blocks_from_table(date_limit: date, table: HtmlTable, dest: list):
 			block_page = block_page[1:]
 
 		# Gets the final url:
-		block_url = find_revision_url(block_page, date_limit)
+		block_url = find_revision_url(real_page(block_page), date_limit)
 
 		# DEBUG
 		if block_url is None:
