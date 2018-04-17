@@ -21,7 +21,7 @@ def extract_packets(game_version: str):
 	protocol_html = requests.get(url).text
 
 	print("Organizing the data...")
-	soup = BeautifulSoup(protocol_html)
+	soup = BeautifulSoup(protocol_html, "lxml")
 	sections = make_hierarchy(soup)
 	root = sections[0]
 
@@ -32,7 +32,7 @@ def extract_packets(game_version: str):
 
 def find_documentation(game_version: str):
 	html = requests.get("http://wiki.vg/Protocol_version_numbers").text
-	root = make_hierarchy(BeautifulSoup(html))[0]
+	root = make_hierarchy(BeautifulSoup(html, "lxml"))[0]
 	for table in root.recursive_findall(lambda e: isinstance(e, HtmlTable)):
 		for row in table.rows[1:]:
 			release_name = get_text(row[0])

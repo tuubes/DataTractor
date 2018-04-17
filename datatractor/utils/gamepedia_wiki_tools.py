@@ -1,10 +1,8 @@
 import re
 from datetime import date, datetime
 
-import requests
-import requests_cache
-
 from datatractor.utils.html_tools import *
+from datatractor.utils.http_tools import *
 
 wiki_url = "https://minecraft.gamepedia.com"
 
@@ -16,8 +14,8 @@ def extract_release_infos(game_version: str, major_only: bool):
 	:param major_only: True to inspect only the major versions, eg 1.11 and not 1.11.2
 	:return: release_date, next_version, next_date
 	"""
-	html = requests.get(wiki_url + "/Java_Edition_version_history").text
-	root = make_hierarchy(html)[0]
+	soup = robust_soup(page_url("Java_Edition_version_history"))
+	root = make_hierarchy(soup)[0]
 	next_version = None
 	next_date = date.today()
 	date_format = "%B %d, %Y"
@@ -42,21 +40,22 @@ def extract_release_infos(game_version: str, major_only: bool):
 	return None, None, None  # not found
 
 
-def get_revision_url(page_title: str, before_date: date):
+def find_revision_url(page_title: str, before_date: date):
 	"""
 	Searches the most up-to-date revision of the given page before the given date.
 	:param page_title: the page to search
 	:param before_date: the date to search before
 	:return: the URL pointing to the corresponding revision of the page, or None if not found
 	"""
+	if page_title.startswith("/"):
+		page_title = page_title[1:]
+	if page_title.endswith("/"):
+		page_title = page_title[:-1]
 	history_url = "%s/index.php?title=%s&action=history&year=%s&month=%s&tagfilter=" % (
 		wiki_url, page_title, before_date.year, before_date.month)
-	html = requests.get(history_url).text
-	while not html:
-		# This request sometimes returns an empty string, for no apparent reason.
-		# In that case, we clear the cache and do the request again.
-		requests_cache.clear()
-		html = requests.get(history_url).text
+	html = robust_request(history_url).text
+	# This request sometimes returns an empty string, for no apparent reason.
+	# In that case, we clear the cache and do the request again. This is done by robust_request()
 	soup = BeautifulSoup(html, "lxml")
 	date_format = "%H:%M, %d %B %Y"
 
@@ -64,6 +63,10 @@ def get_revision_url(page_title: str, before_date: date):
 		revision_date = datetime.strptime(get_text(revision), date_format).date()
 		# DEBUG print(page_title, revision_date)
 		if revision_date < before_date:
-			link = revision["href"]
-			return (wiki_url + link) if link.startswith("/") else link
+			return page_url(revision["href"])
 	return None
+
+
+def page_url(page_title: str):
+	sep = "" if page_title.startswith("/") else "/"
+	return wiki_url + sep + page_title
