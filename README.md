@@ -15,7 +15,7 @@ In the repo's main directory, simply run the `xtract` script:
 python xtract.py -v <game_version> -o <output_directory>
 ```
 
-`o` might be omitted, in which case `<current_dir>/out/generated_<game_version>` is used.
+`-o` might be omitted, in which case `<current_dir>/out/generated_<game_version>` is used.
 
 Example:
 
