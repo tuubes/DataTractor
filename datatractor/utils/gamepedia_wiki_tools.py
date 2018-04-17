@@ -29,6 +29,10 @@ def extract_release_infos(game_version: str, major_only: bool):
 				rows = table.rows[1:]  # skips header
 			for row in rows:
 				version = re.sub("\(.*?\)", "", get_text(row[0])).strip()
+				if major_only:
+					split = version.split(".")
+					if len(split) > 2:
+						version = ".".join(split[:2])
 				release_date = datetime.strptime(get_text(row[1]), date_format).date()
 				if version == game_version:
 					return release_date, next_version, next_date
