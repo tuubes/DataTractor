@@ -1,4 +1,5 @@
 import requests
+
 from datatractor.utils.html_tools import *
 
 

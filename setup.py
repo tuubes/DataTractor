@@ -8,5 +8,5 @@ setup(
 	license='GPLv3',
 	author='TheElectronWill',
 	description='Data extractor for Tuubes',
-	install_requires=['beautifulsoup4', 'requests']
+	install_requires=['beautifulsoup4', 'requests', 'requests-cache']
 )

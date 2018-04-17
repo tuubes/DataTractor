@@ -1,26 +1,37 @@
 #!/usr/bin/python3
 
+import shutil
+import sys
+from getopt import getopt, GetoptError
 from os import getcwd, makedirs, path
-from sys import argv, exit
-from getopt import *
+
+import requests_cache
+
 from datatractor.main.packets_extractor import *
 from datatractor.main.scala_generator import *
-import shutil
 
 # Main program
+usage = "xtract.py -v <game_version> [-o <output_dir>] [--nocache | --cachetime <cache_timeout>]"
+
 try:
-	opts, args = getopt(argv[1:], "v:o:")
+	opts, args = getopt(sys.argv[1:], "v:o:", ["nocache, cachetime="])
 except GetoptError:
-	print("Usage: xtract.py -v <game_version> [-o <output_dir>]")
+	print("Usage:", usage)
 	exit(2)
 else:
 	game_version = None
 	output_dir = None
+	use_cache = True
+	cache_timeout = 300
 	for opt, arg in opts:
 		if opt == "-v":
 			game_version = arg
 		elif opt == "-o":
 			output_dir = arg
+		elif opt == "--nocache":
+			use_cache = False
+		elif opt == "--cachetime":
+			cache_timeout = int(arg)
 
 	if not game_version:
 		print("Missing parameter: -v <game_version>")
@@ -34,6 +45,10 @@ else:
 	if path.isdir(output_dir):
 		shutil.rmtree(output_dir, ignore_errors=True)
 		print("Output dir cleaned")
+
+	if use_cache:
+		print("Using requests_cache with a timeout of %s seconds" % cache_timeout)
+		requests_cache.install_cache("out/http_cache", "sqlite", cache_timeout)
 
 	protocol = extract_packets(game_version)
 
