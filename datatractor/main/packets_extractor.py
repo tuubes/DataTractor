@@ -1,7 +1,6 @@
-import requests
+import requests, re
 from datatractor.utils.html_tools import *
 from datatractor.utils.string_tools import *
-
 
 def extract_packets(game_version: str):
 	"""Extracts packet data from wiki.vg"""
@@ -24,7 +23,6 @@ def extract_packets(game_version: str):
 
 	print("Analysing the protocol...")
 	protocol = extract_protocol(root, game_version, protocol_number)
-	print("Done!")
 	return protocol
 
 
@@ -177,7 +175,8 @@ class Packet:
 	"""Represents a packet."""
 
 	def __init__(self, name_str, id_str, fields):
-		self.name_snake = to_snake_case(name_str)
+		self.raw_name = name_str
+		self.name_snake = to_snake_case(re.sub("\(.*?\)", "", name_str))
 		self.name = to_pascal_case(self.name_snake)
 		self.id = int(id_str, 0)
 		self.fields = fields

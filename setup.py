@@ -2,8 +2,8 @@ from setuptools import setup
 
 setup(
 	name='DataTractor',
-	version='0.1',
-	packages=['datatractor.main', 'datatractor.utils'],
+	version='1.0',
+	packages=['datatractor', 'datatractor.main', 'datatractor.utils'],
 	url='https://github.com/tuubes/DataTractor',
 	license='GPLv3',
 	author='TheElectronWill',

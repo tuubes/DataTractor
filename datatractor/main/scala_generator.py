@@ -176,6 +176,8 @@ def generate_packet_class(p: Packet) -> (str, str):
 	traits_declaration = "\n\t".join(traits)
 	mixin_declaration = " with ".join(complete)
 
+	# TODO import tuubes.core.network.packets or something like this
+
 	pclass = """
 import com.electronwill.niol.{NiolInput, NiolOutput}
 %s
@@ -230,3 +232,11 @@ object %s {
 	   )
 
 	return pname, pclass.strip()
+
+
+def write_packet_class(folder, packet):
+	pname, pclass = generate_packet_class(packet)
+	output_file = "%s/%s.scala" % (folder, pname)
+	f = open(output_file, "w+")
+	f.write(pclass)
+	f.close()
