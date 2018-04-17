@@ -9,7 +9,17 @@ Extract game data from web sources.
 ## How to use
 
 You need python version 3.
-In the repo's main directory, simply run the `xtract` script:
+
+To install the package, run:
+```bash
+python setup.py install
+```
+Tip: you can add the `--user` option to install it for you only, without root permissions.
+
+
+
+
+Then, in the repo's main directory, simply run the `xtract` script:
 
 ```bash
 python xtract.py -v <game_version> -o <output_directory>
