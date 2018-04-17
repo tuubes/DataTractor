@@ -14,7 +14,7 @@ from datatractor.main.scala_generator import *
 usage = "xtract.py -v <game_version> [-o <output_dir>] [--nocache | --cachetime <cache_timeout>]"
 
 try:
-	opts, args = getopt(sys.argv[1:], "v:o:", ["nocache, cachetime="])
+	opts, args = getopt(sys.argv[1:], "v:o:", ["help, nocache, cachetime="])
 except GetoptError:
 	print("Usage:", usage)
 	exit(2)
@@ -24,6 +24,10 @@ else:
 	use_cache = True
 	cache_timeout = 300
 	for opt, arg in opts:
+		if opt == "--help":
+			print("xtract.py - Data extractor for Tuubes (http://tuubes.org)")
+			print("Usage:", usage)
+			exit(0)
 		if opt == "-v":
 			game_version = arg
 		elif opt == "-o":
