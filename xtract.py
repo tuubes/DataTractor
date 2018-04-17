@@ -42,8 +42,8 @@ else:
 	for sub in [protocol.handshake, protocol.status, protocol.login, protocol.play]:
 		sub_name = sub.name.lower()
 		print("Processing %s packets..." % sub_name)
-		dir_cb = "%s/%s/clientbound" % (output_dir, sub_name)
-		dir_sb = "%s/%s/serverbound" % (output_dir, sub_name)
+		dir_cb = "%s/packets/%s/clientbound" % (output_dir, sub_name)
+		dir_sb = "%s/packets/%s/serverbound" % (output_dir, sub_name)
 		makedirs(dir_cb)
 		makedirs(dir_sb)
 		for packet in sub.clientbound:
