@@ -1,6 +1,7 @@
 from datatractor.utils.gamepedia_wiki_tools import *
-from datatractor.utils.string_tools import *
 from datatractor.utils.http_tools import *
+from datatractor.utils.string_tools import *
+import json
 
 
 def extract_blocks(date_limit: date):
@@ -41,8 +42,7 @@ def extract_blocks_from_table(date_limit: date, table: HtmlTable, dest: list):
 			print("WARNING - No url found for block %s, page %s" % (block_mc_name, block_page))
 			continue
 		else:
-			print("Extracting block '%s':'%s' with page %s -> %s" % (
-				block_nice_name, block_mc_name, block_page, block_url))
+			print("Extracting block \"%s\" from page %s -> %s" % (block_nice_name, block_page, block_url))
 
 		# Constructs the blog:
 		block = gather_block_infos(block_id, block_mc_name, block_nice_name, block_url)
@@ -138,7 +138,11 @@ class DataValue:
 	"""Represents a block data value"""
 
 	def __init__(self, value: str, description: str):
-		self.value = value
+		try:
+			self.value = int(value)
+		except:
+			print("WARNING - Unclear data value '%s' described as '%s'" % (value, description))
+			self.value = value
 		self.description = description
 
 	def __str__(self):
@@ -146,6 +150,47 @@ class DataValue:
 
 	def __repr__(self):
 		return self.__str__()
+
+
+def json_block_variants(b: Block):
+	base_id = b.numeric_id
+	base_name = b.string_id
+	zero_made = False
+	serialized = jsonify(b)
+	variants = []
+	for dv in b.values:
+		additional_id = dv.value
+		if isinstance(additional_id, int):
+			full_id = ((base_id << 4) & 0xffffffff) | additional_id
+			full_name = "%s$%d" % (base_name, additional_id)
+			nice_name = "%s, %s" % (base_name, dv.description)
+			if additional_id == 0:
+				zero_made = True
+			s = serialized.copy()
+			s["full_id"] = full_id
+			s["string_id"] = full_name
+			s["nice_name"] = nice_name
+			variants.append(s)
+	# debug print("VARIANTS of ", base_id, ":", s)
+	if not zero_made:
+		serialized["full_id"] = (base_id << 4) & 0xffffffff
+		variants.append(serialized)
+	return variants
+
+
+def jsonify(o):
+	if isinstance(o, Block):
+		d = get_block_dict(o, ["values"])
+	else:
+		d = o.__dict__
+	return json.dumps(d, default=jsonify)
+
+
+def get_block_dict(b: Block, exclude: list):
+	state = b.__dict__.copy()
+	for e in exclude:
+		del state[e]
+	return state
 
 
 def as_bool(p: dict, k: str, default: bool):
