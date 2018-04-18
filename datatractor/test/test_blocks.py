@@ -3,7 +3,7 @@ from datatractor.utils.gamepedia_wiki_tools import *
 
 requests_cache.install_cache("out/http_cache", "sqlite", 3000)
 
-version = "1.11"
+version = "1.12"
 release_date, next_version, next_date = extract_release_infos(version, True)
 print("Version: %s released on %s" % (version, release_date))
 print("Next version: %s released on %s" % (next_version, next_date))
@@ -24,3 +24,5 @@ for block in blocks:
 	print("")
 	print("tool:", block.tool)
 	print("max_stack:", block.max_stack)
+	print("")
+	print("json:", json_block_variants(block))
