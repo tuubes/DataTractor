@@ -55,8 +55,8 @@ class BlocksExtractor:
 
 	def extract(self, output_dir):
 		blocks = b_extractor.extract_blocks(self.next_date)
-		f = open("%s/blocks.json" % output_dir)
-		f2 = open("%s/blocks_legacy.json" % output_dir)
+		f = open("%s/blocks.json" % output_dir, "w")
+		f2 = open("%s/blocks_legacy.json" % output_dir, "w")
 		for block in blocks:
 			json = b_extractor.json_block_variants(block)
 			f.write(json)
