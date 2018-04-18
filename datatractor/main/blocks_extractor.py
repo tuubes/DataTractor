@@ -170,17 +170,19 @@ def json_block_variants(b: Block):
 			s["full_id"] = full_id
 			s["string_id"] = full_name
 			s["nice_name"] = nice_name
-			variants.append(s)
+			variants.append(jsonify(s))
 	# debug print("VARIANTS of ", base_id, ":", s)
 	if not zero_made:
 		serialized["full_id"] = (base_id << 4) & 0xffffffff
-		variants.append(serialized)
+		variants.append(jsonify(serialized))
 	return variants
 
 
 def jsonify(o):
 	if isinstance(o, Block):
 		d = get_block_dict(o, ["values"])
+	elif isinstance(o, dict):
+		d = o
 	else:
 		d = o.__dict__
 	return json.dumps(d, default=jsonify)
