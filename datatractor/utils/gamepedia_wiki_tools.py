@@ -18,6 +18,7 @@ redirections = {
 	"Hardened_Clay": "Terracotta",
 	"Stained_Glass_Pane": "Glass_Pane",
 	"Iron_Trapdoor": "Trapdoor",
+	"Oak Trapdoor": "Trapdoor",
 	"Red_Sandstone": "Sandstone",
 	"Repeating_Command_Block": "Command_Block",
 	"Chain_Command_Block": "Command_Block",
