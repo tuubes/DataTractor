@@ -156,7 +156,7 @@ def json_block_variants(b: Block):
 	base_id = b.numeric_id
 	base_name = b.string_id
 	zero_made = False
-	serialized = jsonify(b)
+	serialized = get_block_dict(b, ["values"])
 	variants = []
 	for dv in b.values:
 		additional_id = dv.value
