@@ -1,24 +1,25 @@
 #!/usr/bin/python3
 
-import shutil
+import os
 import sys
-from getopt import getopt, GetoptError
-from os import getcwd, makedirs, path
-
+import shutil
 import requests_cache
 
-from datatractor.main.packets_extractor import *
-from datatractor.main.scala_generator import *
+from getopt import getopt, GetoptError
+from datatractor.main.extractors import PacketsExtractor, BlocksExtractor
 
 # Main program
 usage = "xtract.py -v <game_version> [-o <output_dir>] [--nocache | --cachetime <cache_timeout>]"
 
 try:
-	opts, args = getopt(sys.argv[1:], "v:o:", ["help, nocache, cachetime="])
+	opts, args = getopt(sys.argv[1:], "v:o:pb", ["packets, blocks, help, nocache, cachetime="])
 except GetoptError:
 	print("Usage:", usage)
 	exit(2)
 else:
+	# Extractors
+	extractors = []
+	# Misc params
 	game_version = None
 	output_dir = None
 	use_cache = True
@@ -28,7 +29,7 @@ else:
 			print("xtract.py - Data extractor for Tuubes (http://tuubes.org)")
 			print("Usage:", usage)
 			exit(0)
-		if opt == "-v":
+		elif opt == "-v":
 			game_version = arg
 		elif opt == "-o":
 			output_dir = arg
@@ -41,12 +42,12 @@ else:
 		print("Missing parameter: -v <game_version>")
 		game_version = input("Please enter a version: ")
 	if not output_dir:
-		output_dir = "%s/out/generated_%s" % (getcwd(), game_version)
+		output_dir = "%s/out/generated_%s" % (os.getcwd(), game_version)
 	if output_dir.endswith("/"):
 		output_dir = output_dir[:-1]
 
 	print("Using output dir %s" % output_dir)
-	if path.isdir(output_dir):
+	if os.path.isdir(output_dir):
 		shutil.rmtree(output_dir, ignore_errors=True)
 		print("Output dir cleaned")
 
@@ -54,20 +55,18 @@ else:
 		print("Using requests_cache with a timeout of %s seconds" % cache_timeout)
 		requests_cache.install_cache("out/http_cache", "sqlite", cache_timeout)
 
-	protocol = extract_packets(game_version)
+	for opt, arg in opts:
+		if opt == "p" or opt == "packets":
+			extractors.append(PacketsExtractor(game_version))
+		elif opt == "b" or opt == "blocks":
+			extractors.append(BlocksExtractor(game_version))
 
-	print("Generating Scala files...")
-	sub: SubProtocol
-	for sub in [protocol.handshake, protocol.status, protocol.login, protocol.play]:
-		sub_name = sub.name.lower()
-		print("Processing %s packets..." % sub_name)
-		dir_cb = "%s/packets/%s/clientbound" % (output_dir, sub_name)
-		dir_sb = "%s/packets/%s/serverbound" % (output_dir, sub_name)
-		makedirs(dir_cb)
-		makedirs(dir_sb)
-		for packet in sub.clientbound:
-			write_packet_class(dir_cb, packet)
-		for packet in sub.serverbound:
-			write_packet_class(dir_sb, packet)
+	if len(extractors) == 0:
+		print("No extractors specified, let's run all of them!")
+		extractors = [PacketsExtractor(game_version), BlocksExtractor(game_version)]
 
-	print("Generation complete!")
+	for extractor in extractors:
+		print("====", extractor.name, "====")
+		extractor.extract(output_dir)
+		print("============================\n")
+	print("Done!")
