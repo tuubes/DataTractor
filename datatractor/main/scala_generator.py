@@ -8,7 +8,7 @@ def scala_type(field_type: str) -> str:
 	:param field_type: the (non-scala) field's type
 	:return: the corresponding Scala type
 	"""
-	t: str = field_type.lower().replace("enum", "").strip()
+	t: str = field_type.replace("enum", "").strip()
 	same = ["boolean", "byte", "short", "int", "long", "float", "double", "string"]
 	as_str = ["chat", "identifier"]
 	if t in same:
@@ -57,7 +57,7 @@ def niol_write(field_type: str) -> str:
 	:param field_type: the (non-scala) field's type
 	:return: a code that writes the field
 	"""
-	t: str = field_type.lower().replace("enum", "").strip()
+	t: str = field_type.replace("enum", "").strip()
 	simple_dict = {
 		"boolean": "out.putBoolean($)",
 		"byte": "out.putByte($)",
@@ -78,6 +78,8 @@ def niol_write(field_type: str) -> str:
 		"array of long": "out.putLongs($)",
 		"array of float": "out.putFloats($)",
 		"array of double": "out.putDoubles($)",
+		"position": "out.putLong($)",
+		"angle": "out.putByte($)",
 	}
 	simple = simple_dict.get(t)
 	if simple:
@@ -100,7 +102,7 @@ def niol_read(field_type: str, prefix: str = "val ") -> str:
 	:param prefix: the prefix to append before the assignation of the value
 	:return: a code that reads the field
 	"""
-	t: str = field_type.lower().replace("enum", "").strip()
+	t: str = field_type.replace("enum", "").strip()
 	simple_dict = {
 		"boolean": prefix + "$ = in.getBoolean()",
 		"byte": prefix + "$ = in.getByte()",
@@ -121,6 +123,8 @@ def niol_read(field_type: str, prefix: str = "val ") -> str:
 		"array of long": prefix + "$ = in.getLongs($Length)",
 		"array of float": prefix + "$ = in.getFloats($Length)",
 		"array of double": prefix + "$ = in.getLongs($Length)",
+		"position": prefix + "$ = in.getLong()",
+		"angle": prefix + "$ = in.getByte()",
 	}
 	simple = simple_dict.get(t)
 	if simple:
@@ -151,8 +155,8 @@ def generate_packet_class(p: Packet) -> (str, str):
 	b_with = []
 	traits = []
 	complete = [bname]
-	has_uuid = False
-	has_utf8 = False
+	additional_getters = []
+	imports = set()
 	skip = False
 	for i in range(len(p.fields)):
 		if skip:
@@ -160,21 +164,28 @@ def generate_packet_class(p: Packet) -> (str, str):
 			continue
 		field = p.fields[i]
 		fname = field.name
-		ftype = scala_type(field.type)
+		rawtype = field.type.strip().lower()
+		ftype = scala_type(rawtype)
 		is_length_field = False
 		if ftype in integers and fname.endswith("Length") and i + 1 < len(p.fields):
 			next_field = p.fields[i + 1]
 			next_fname = next_field.name
-			next_ftype = scala_type(next_field.type)
+			next_rawtype = next_field.type.strip().lower()
+			next_ftype = scala_type(next_rawtype)
 			if next_fname == fname[:-6]:  # fname without the "Length" at the end
-				if next_ftype.startswith("Array"):  # type that has a length, except String (because in that case we have to get the utf8 byte count, not the character count)
+				if next_ftype.startswith("Array"):
+					# type that has a length, except String (because in that case we have to use the utf8 byte count, not the character count)
 					is_length_field = True
 					skip = True
+
 					length_field = field
 					length_fname = fname
+					length_rawtype = rawtype
 					length_ftype = ftype
+
 					field = next_field
 					fname = next_fname
+					rawtype = next_rawtype
 					ftype = next_ftype
 				else:
 					print("WARNING - Unclear field %s - What is the \"length\" of a variable of type %s?" % (
@@ -185,21 +196,18 @@ def generate_packet_class(p: Packet) -> (str, str):
 		if is_length_field:
 			# Reads and writes the length before the actual value
 			# The length field isn't in the constructor nor in the builder.
-			length_fwrite = parametrize(niol_write(length_field.type), "$", fname + ".length")
+			length_fwrite = parametrize(niol_write(length_rawtype), "$", fname + ".length")
 			write.append("\t\t" + length_fwrite)
 
-			length_fread = parametrize(niol_read(length_field.type), "$", length_fname)
+			length_fread = parametrize(niol_read(length_rawtype), "$", length_fname)
 			read.append("\t\t" + length_fread)
 
 		name_and_type = "%s: %s" % (fname, ftype)
-
-		has_uuid = has_uuid or ftype == "UUID"
-		has_utf8 = has_utf8 or ftype == "String"
-
 		decl.append("var " + name_and_type)
 		b_decl.append("\tprivate[this] var %s = _" % name_and_type)
 
 		if ftype == "String":
+			imports.add("import java.nio.charset.StandardCharsets.UTF_8")
 			if is_length_field:
 				print("WARNING - Weird length field %s for a string whose length is implicit" % length_fname)
 
@@ -216,10 +224,17 @@ def generate_packet_class(p: Packet) -> (str, str):
 			read.append("\t\t" + lread)
 			read.append("\t\t" + fread)
 		else:
-			fwrite = parametrize(niol_write(field.type), "$", fname)
+			if ftype == "UUID":
+				imports.add("java.util.UUID")
+			elif rawtype == "position":
+				imports.add("com.electronwill.utils.Vec3i")
+			elif rawtype == "angle":
+				imports.add("com.electronwill.utils.{Pi2, InvPi2}")
+
+			fwrite = parametrize(niol_write(rawtype), "$", fname)
 			write.append("\t\t" + fwrite)
 
-			fread = parametrize(niol_read(field.type), "$", fname)
+			fread = parametrize(niol_read(rawtype), "$", fname)
 			read.append("\t\t" + fread)
 
 		global todo_count
@@ -231,11 +246,37 @@ def generate_packet_class(p: Packet) -> (str, str):
 		construct.append(fname)
 
 		fcapital = to_pascal_case(field.name_snake)
-		with1 = "\tdef with%s(%s): %s[P with %s] {" % (fcapital, name_and_type, bname, fcapital)
+		with1 = "\tdef with%s(%s): %s[P with %s] = {" % (fcapital, name_and_type, bname, fcapital)
 		with2 = "\t\tthis.%s = %s" % (fname, fname)
 		with3 = "\t\tthis.asInstanceOf[%s[P with %s]]" % (bname, fcapital)
 		with4 = "\t}"
 		b_with.append("\n".join([with1, with2, with3, with4]))
+
+		if rawtype == "position":  # build with Vec3i instead of long
+			with1 = "\tdef with%s(v: Vec3i): %s[P with %s] = {" % (fcapital, bname, fcapital)
+			with2 = "\t\tthis.%s = ((v.x & 0x3ffffff) << 38) | ((v.y & 0xfff) << 26) | (v.z & 0x3ffffff)" % fname
+			with3 = "\t\tthis.asInstanceOf[%s[P with %s]]" % (bname, fcapital)
+			with4 = "\t}"
+			b_with.append("\n".join([with1, with2, with3, with4]))
+
+			get1 = "\tdef vec%s: Vec3i = {" % fcapital
+			get2 = "\t\tval x = %s >> 38" % fname
+			get3 = "\t\tval y = (%s >> 26) & 0xfff" % fname
+			get4 = "\t\tval z = %s << 38 >> 38" % fname
+			get5 = "\t\tnew Vec3i(x, y, z)"
+			get6 = "\t}"
+			additional_getters.append("\n".join([get1, get2, get3, get4, get5, get6]))
+		elif rawtype == "angle":
+			with1 = "\tdef with%s(angle: Float): %s[P with %s] = {" % (fcapital, bname, fcapital)
+			with2 = "\t\tthis.%s = (angle * InvPi2 * 256f).toByte  " % fname
+			with3 = "\t\tthis.asInstanceOf[%s[P with %s]]" % (bname, fcapital)
+			with4 = "\t}"
+			b_with.append("\n".join([with1, with2, with3, with4]))
+
+			get1 = "\tdef rad%s: Float = {" % fcapital
+			get2 = "\t\t%s * Pi2 / 256f" % fname
+			get3 = "\t}"
+			additional_getters.append("\n".join([get1, get2, get3]))
 
 		traits.append("sealed trait %s" % fcapital)
 		complete.append(fcapital)
@@ -244,8 +285,6 @@ def generate_packet_class(p: Packet) -> (str, str):
 	fields_writing = "\n".join(write)
 	fields_reading = "\n".join(read)
 	packet_constructing = ", ".join(construct)
-	import_uuid = "import java.util.UUID\n" if has_uuid else ""
-	import_utf8 = "import java.nio.charset.StandardCharsets.UTF_8\n" if has_utf8 else ""
 	builder_fields = "\n".join(b_decl)
 	builder_setters = "\n\n".join(b_with)
 	traits_declaration = "\n\t".join(traits)
@@ -255,7 +294,7 @@ def generate_packet_class(p: Packet) -> (str, str):
 
 	pclass = """
 import com.electronwill.niol.{NiolInput, NiolOutput}
-%s%s
+%s
 /** Packet class auto-generated by DataTractor */
 final class %s(%s) extends Packet {
 	override def write(out: NiolOutput): Unit {
@@ -263,7 +302,8 @@ final class %s(%s) extends Packet {
 	}
 	
 	override def id = %s.id
-	
+
+%s	
 }
 object %s extends PacketObj {
 	override val id = %d
@@ -287,10 +327,11 @@ object %s {
 	%s
 	type Complete = %s
 }
-""" % (import_uuid, import_utf8,
+""" % ("\n".join(imports),
 	   pname, fields_declaration,
 	   fields_writing,
 	   pname,
+	   "\n".join(additional_getters),
 	   pname,
 	   p.id,
 	   pname,
