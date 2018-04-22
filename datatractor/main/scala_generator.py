@@ -97,7 +97,7 @@ def niol_write(field_type: str) -> str:
 			   "while (i_$ < $.length) {\n\t\t" \
 			   "\t%s\n\t\t" \
 			   "\ti_$ += 1\n\t\t" \
-			   "}" % parametrize(niol_write(element_type), "$", "$(i)")
+			   "}" % parametrize(niol_write(element_type), "$", "$(i_$)")
 		return loop
 
 	# TODO support more data types
@@ -149,7 +149,7 @@ def niol_read(field_type: str, prefix: str = "val ") -> str:
 			   "while (i_$ < $Length) {\n\t\t" \
 			   "\t%s\n\t\t" \
 			   "\ti_$ += 1\n\t\t" \
-			   "}" % (prefix, scala_type(field_type), parametrize(niol_read(element_type, ""), "$", "$(i)"))
+			   "}" % (prefix, scala_type(field_type), parametrize(niol_read(element_type, ""), "$", "$(i_$)"))
 		return loop
 
 	# TODO support more data types
