@@ -131,6 +131,9 @@ def niol_read(field_type: str, prefix: str = "val ") -> str:
 	return "// TODO read $"
 
 
+todo_count = 0
+
+
 def generate_packet_class(p: Packet) -> (str, str):
 	"""
 	Generates scala classes from packet data.
@@ -220,6 +223,11 @@ def generate_packet_class(p: Packet) -> (str, str):
 			fread = parametrize(niol_read(field.type), "$", fname)
 			read.append("\t\t" + fread)
 
+		global todo_count
+		if "TODO" in fwrite:
+			todo_count += 1
+		if "TODO" in fread:
+			todo_count += 1
 
 		construct.append(fname)
 
