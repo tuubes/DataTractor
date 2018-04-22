@@ -167,8 +167,7 @@ def generate_packet_class(p: Packet) -> (str, str):
 			next_fname = next_field.name
 			next_ftype = scala_type(next_field.type)
 			if next_fname == fname[:-6]:  # fname without the "Length" at the end
-				if next_ftype.startswith(
-					"Array"):  # type that has a length, except String (because in that case we have to get the utf8 byte count, not the character count)
+				if next_ftype.startswith("Array"):  # type that has a length, except String (because in that case we have to get the utf8 byte count, not the character count)
 					is_length_field = True
 					skip = True
 					length_field = field
