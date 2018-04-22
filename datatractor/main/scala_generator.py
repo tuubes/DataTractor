@@ -136,6 +136,7 @@ def niol_read(field_type: str, prefix: str = "val ") -> str:
 
 
 todo_count = 0
+unhandled_type_count = 0
 
 
 def generate_packet_class(p: Packet) -> (str, str):
@@ -238,10 +239,13 @@ def generate_packet_class(p: Packet) -> (str, str):
 			read.append("\t\t" + fread)
 
 		global todo_count
+		global unhandled_type_count
 		if "TODO" in fwrite:
 			todo_count += 1
 		if "TODO" in fread:
 			todo_count += 1
+		if ftype in ["???", "AnyRef", "Nothing"]:
+			unhandled_type_count += 1
 
 		construct.append(fname)
 

@@ -45,7 +45,9 @@ class PacketsExtractor:
 				generator.write_packet_class(dir_sb, packet)
 
 		print("Generation complete!")
-		print("There are %d TODOs that you should review" % generator.todo_count)
+		print("There are %d TODOs and %s unhandled types that you should review" % (generator.todo_count, generator.unhandled_type_count))
+		generator.todo_count = 0
+		generator.unhandled_type_count = 0
 
 
 class BlocksExtractor:
