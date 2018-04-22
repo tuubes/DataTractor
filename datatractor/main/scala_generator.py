@@ -14,7 +14,7 @@ def scala_type(field_type: str) -> str:
 		return t.title()
 	if t == "uuid":
 		return "UUID"
-	if ("string" in t) or (t in as_str):
+	if (t.startswith("string")) or (t in as_str):
 		return "String"
 	if (t == "varint") or (t == "unsigned byte") or (t == "unsigned short"):
 		return "Int"
@@ -83,13 +83,22 @@ def niol_write(field_type: str) -> str:
 	simple = simple_dict.get(t)
 	if simple:
 		return simple
-	if "string" in t or t in as_str:
+	if t.startswith("string") or t in as_str:
 		return simple_dict.get("string")
 
 	if t.startswith("optional "):
 		x = t[9:]
 		write_x = niol_write(x)
 		return "if ($.isDefined) {\n\t\t\t%s\n\t\t}" % write_x
+
+	if t.startswith("array of"):
+		element_type = t.replace("array of ", "").split(" ")[0]
+		loop = "var i_$ = 0\n\t\t" \
+			   "while (i_$ < $.length) {\n\t\t" \
+			   "\t%s\n\t\t" \
+			   "\ti_$ += 1\n\t\t" \
+			   "}" % parametrize(niol_write(element_type), "$", "$(i)")
+		return loop
 
 	# TODO support more data types
 
@@ -131,12 +140,22 @@ def niol_read(field_type: str, prefix: str = "val ") -> str:
 	simple = simple_dict.get(t)
 	if simple:
 		return simple
-	if "string" in t or t in as_str:
+	if t.startswith("string") or t in as_str:
 		return simple_dict.get("string")
+	if t.startswith("array of "):
+		element_type = t.replace("array of ", "").split(" ")[0]
+		loop = "var i_$ = 0\n\t\t" \
+			   "%s$ = new %s($Length)\n\t\t" \
+			   "while (i_$ < $Length) {\n\t\t" \
+			   "\t%s\n\t\t" \
+			   "\ti_$ += 1\n\t\t" \
+			   "}" % (prefix, scala_type(field_type), parametrize(niol_read(element_type, ""), "$", "$(i)"))
+		return loop
 
 	# TODO support more data types
 
 	return "// TODO read $"
+
 
 as_str = ["chat", "identifier"]
 todo_count = 0
@@ -172,31 +191,26 @@ def generate_packet_class(p: Packet) -> (str, str):
 		rawtype = field.type.strip().lower()
 		ftype = scala_type(rawtype)
 		is_length_field = False
-		if ftype in integers and fname.endswith("Length") and i + 1 < len(p.fields):
+		if ftype in integers and i + 1 < len(p.fields):
 			next_field = p.fields[i + 1]
 			next_fname = next_field.name
 			next_rawtype = next_field.type.strip().lower()
 			next_ftype = scala_type(next_rawtype)
-			if next_fname == fname[:-6]:  # fname without the "Length" at the end
-				if next_ftype.startswith("Array"):
-					# type that has a length, except String (because in that case we have to use the utf8 byte count, not the character count)
-					is_length_field = True
-					skip = True
+			if next_ftype.startswith("Array"):
+				# type that has a length, except String (because in that case we have to use the utf8 byte count, not the character count)
+				is_length_field = True
+				skip = True
 
-					length_field = field
-					length_fname = fname
-					length_rawtype = rawtype
-					length_ftype = ftype
+				fname = next_fname + "Length"
+				length_field = field
+				length_fname = fname
+				length_rawtype = rawtype
+				length_ftype = ftype
 
-					field = next_field
-					fname = next_fname
-					rawtype = next_rawtype
-					ftype = next_ftype
-				else:
-					print("WARNING - Unclear field %s - What is the \"length\" of a variable of type %s?" % (
-					next_fname, next_ftype))
-			else:
-				print("WARNING - Unclear field %s: what field is it the length of?" % fname)
+				field = next_field
+				fname = next_fname
+				rawtype = next_rawtype
+				ftype = next_ftype
 
 		if is_length_field:
 			# Reads and writes the length before the actual value
