@@ -56,9 +56,9 @@ else:
 		requests_cache.install_cache("out/http_cache", "sqlite", cache_timeout)
 
 	for opt, arg in opts:
-		if opt == "p" or opt == "packets":
+		if opt == "-p" or opt == "--packets":
 			extractors.append(PacketsExtractor(game_version))
-		elif opt == "b" or opt == "blocks":
+		elif opt == "-b" or opt == "--blocks":
 			extractors.append(BlocksExtractor(game_version))
 
 	if len(extractors) == 0:
