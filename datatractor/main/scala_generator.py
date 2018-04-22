@@ -10,7 +10,6 @@ def scala_type(field_type: str) -> str:
 	"""
 	t: str = field_type.replace("enum", "").strip()
 	same = ["boolean", "byte", "short", "int", "long", "float", "double", "string"]
-	as_str = ["chat", "identifier"]
 	if t in same:
 		return t.title()
 	if t == "uuid":
@@ -28,8 +27,7 @@ def scala_type(field_type: str) -> str:
 		# TODO support items slots
 		return "AnyRef"
 	if t == "nbt tag":
-		# TODO support nbt tags
-		return "AnyRef"
+		return "TagCompound"
 	if t == "angle":
 		return "Byte"
 	if t == "no fields" or t == "no field":
@@ -68,7 +66,7 @@ def niol_write(field_type: str) -> str:
 		"long": "out.putLong($)",
 		"float": "out.putFloat($)",
 		"double": "out.putDouble($)",
-		"string": "out.putString($, UTF_8)",
+		"string": "out.putVarstring($, UTF_8)",
 		"uuid": "out.putLong($.getMostSignificantBits); out.putLong($.getLeastSignificantBits)",
 		"varint": "out.putVarint($)",
 		"varlong": "out.putVarlong($)",
@@ -80,10 +78,13 @@ def niol_write(field_type: str) -> str:
 		"array of double": "out.putDoubles($)",
 		"position": "out.putLong($)",
 		"angle": "out.putByte($)",
+		"nbt tag": "$.writeNamed(new NiolToDataOutput(out))",
 	}
 	simple = simple_dict.get(t)
 	if simple:
 		return simple
+	if "string" in t or t in as_str:
+		return simple_dict.get("string")
 
 	if t.startswith("optional "):
 		x = t[9:]
@@ -116,7 +117,7 @@ def niol_read(field_type: str, prefix: str = "val ") -> str:
 		"varlong": prefix + "$ = in.getVarlong()",
 		"unsigned byte": prefix + "$ = in.getUnsignedByte()",
 		"unsigned short": prefix + "$ = in.getUnsignedShort()",
-		"string": prefix + "$ = in.getString($Length, UTF_8)",
+		"string": prefix + "$ = in.getVarstring(UTF_8)",
 		"byte array": prefix + "$ = in.getBytes($Length)",
 		"array of byte": prefix + "$ = in.getBytes($Length)",
 		"array of int": prefix + "$ = in.getInts($Length)",
@@ -125,16 +126,19 @@ def niol_read(field_type: str, prefix: str = "val ") -> str:
 		"array of double": prefix + "$ = in.getLongs($Length)",
 		"position": prefix + "$ = in.getLong()",
 		"angle": prefix + "$ = in.getByte()",
+		"nbt tag": prefix + "$ = TagCompound.readNamed(new NiolToDataInput(in))",
 	}
 	simple = simple_dict.get(t)
 	if simple:
 		return simple
+	if "string" in t or t in as_str:
+		return simple_dict.get("string")
 
 	# TODO support more data types
 
 	return "// TODO read $"
 
-
+as_str = ["chat", "identifier"]
 todo_count = 0
 unhandled_type_count = 0
 
@@ -190,7 +194,7 @@ def generate_packet_class(p: Packet) -> (str, str):
 					ftype = next_ftype
 				else:
 					print("WARNING - Unclear field %s - What is the \"length\" of a variable of type %s?" % (
-						next_fname, next_ftype))
+					next_fname, next_ftype))
 			else:
 				print("WARNING - Unclear field %s: what field is it the length of?" % fname)
 
@@ -209,34 +213,21 @@ def generate_packet_class(p: Packet) -> (str, str):
 
 		if ftype == "String":
 			imports.add("import java.nio.charset.StandardCharsets.UTF_8")
-			if is_length_field:
-				print("WARNING - Weird length field %s for a string whose length is implicit" % length_fname)
+		elif ftype == "UUID":
+			imports.add("import java.util.UUID")
+		elif ftype == "TagCompound":
+			imports.add("import com.electronwill.nbj.TagCompound")
+			imports.add("import com.electronwill.niol.compatibility._")
+		elif rawtype == "position":
+			imports.add("import com.electronwill.utils.Vec3i")
+		elif rawtype == "angle":
+			imports.add("import com.electronwill.utils.{Pi2, InvPi2}")
 
-			bytes_fname = "%sBytes" % fname
-			lwrite = "val %s = UTF_8.encode(%s)" % (bytes_fname, fname)
-			lwrite2 = "out.putVarint(%s.limit)" % bytes_fname
-			fwrite = "out.putBytes(%s)" % bytes_fname
-			write.append("\t\t" + lwrite)
-			write.append("\t\t" + lwrite2)
-			write.append("\t\t" + fwrite)
+		fwrite = parametrize(niol_write(rawtype), "$", fname)
+		write.append("\t\t" + fwrite)
 
-			lread = parametrize(niol_read("varint"), "$", fname + "Length")
-			fread = parametrize(niol_read("string"), "$", fname)
-			read.append("\t\t" + lread)
-			read.append("\t\t" + fread)
-		else:
-			if ftype == "UUID":
-				imports.add("java.util.UUID")
-			elif rawtype == "position":
-				imports.add("com.electronwill.utils.Vec3i")
-			elif rawtype == "angle":
-				imports.add("com.electronwill.utils.{Pi2, InvPi2}")
-
-			fwrite = parametrize(niol_write(rawtype), "$", fname)
-			write.append("\t\t" + fwrite)
-
-			fread = parametrize(niol_read(rawtype), "$", fname)
-			read.append("\t\t" + fread)
+		fread = parametrize(niol_read(rawtype), "$", fname)
+		read.append("\t\t" + fread)
 
 		global todo_count
 		global unhandled_type_count
@@ -295,10 +286,11 @@ def generate_packet_class(p: Packet) -> (str, str):
 	mixin_declaration = " with ".join(complete)
 
 	# TODO import tuubes.core.network.packets or something like this
+	imports.add("import com.electronwill.niol.{NiolInput, NiolOutput}")
 
 	pclass = """
-import com.electronwill.niol.{NiolInput, NiolOutput}
 %s
+
 /** Packet class auto-generated by DataTractor */
 final class %s(%s) extends Packet {
 	override def write(out: NiolOutput): Unit {
