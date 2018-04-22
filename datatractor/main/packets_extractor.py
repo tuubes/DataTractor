@@ -180,7 +180,7 @@ class Packet:
 
 	def __init__(self, name_str, id_str, fields):
 		self.raw_name = name_str
-		self.name_snake = to_snake_case(re.sub("\(.*?\)", "", name_str))
+		self.name_snake = to_snake_case(re.sub("\(.*?\)", "", name_str.replace("-", " ")))
 		self.name = to_pascal_case(self.name_snake)
 		self.id = int(id_str, 0)
 		self.fields = fields
