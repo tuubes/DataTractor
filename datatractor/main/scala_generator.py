@@ -30,7 +30,7 @@ def scala_type(field_type: str) -> str:
 		return "TagCompound"
 	if t == "angle":
 		return "Byte"
-	if t == "no fields" or t == "no field":
+	if t == "no fields" or t == "no field" or t == "nofield":
 		return "Nothing"
 
 	if t.startswith("optional "):
@@ -182,6 +182,12 @@ def generate_packet_class(p: Packet) -> (str, str):
 	additional_getters = []
 	imports = set()
 	skip = False
+	if len(p.fields) == 1:
+		field = p.fields[0]
+		rawtype = field.type.strip().lower()
+		ftype = scala_type(rawtype)
+		if ftype == "Nothing":
+			skip = True
 	for i in range(len(p.fields)):
 		if skip:
 			skip = False
