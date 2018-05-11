@@ -320,7 +320,7 @@ final class %s(%s) extends Packet {
 %s
   }
 	
-  override def id = %s.id
+  override def obj = %s
 
 %s	
 }
