@@ -2,7 +2,9 @@
 bin/
 build/
 out/
+dist/
 *__pycache__
+*.egg-info
 
 # PyCharm files
 *.iml
