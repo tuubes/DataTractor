@@ -31,18 +31,23 @@ class PacketsExtractor:
 	def extract(self, output_dir):
 		protocol = p_extractor.extract_packets(self.game_version)
 		print("Generating Scala files...")
+		ver = "mc" + self.game_version.replace(".", "_")
+		base_package = "org.tuubes.craft.%s" % ver
 		sub: p_extractor.SubProtocol
 		for sub in [protocol.handshake, protocol.status, protocol.login, protocol.play]:
 			sub_name = sub.name.lower()
 			print("Processing %s packets..." % sub_name)
-			dir_cb = "%s/packets/%s/clientbound" % (output_dir, sub_name)
-			dir_sb = "%s/packets/%s/serverbound" % (output_dir, sub_name)
+			dir_sub = "%s/packets/%s" % (output_dir, sub_name)
+			dir_cb = dir_sub + "/clientbound"
+			dir_sb = dir_sub + "/serverbound"
 			os.makedirs(dir_cb)
 			os.makedirs(dir_sb)
 			for packet in sub.clientbound:
-				generator.write_packet_class(dir_cb, packet)
+				generator.write_packet_class(dir_cb, packet, "%s.%s.clientbound" % (base_package, sub_name))
 			for packet in sub.serverbound:
-				generator.write_packet_class(dir_sb, packet)
+				generator.write_packet_class(dir_sb, packet, "%s.%s.serverbound" % (base_package, sub_name))
+
+			generator.write_protocol_class(dir_sub, sub, "%s.%s" % (base_package, sub_name))
 
 		print("Generation complete!")
 		print("There are %d TODOs and %s unhandled types that you should review" % (generator.todo_count, generator.unhandled_type_count))
