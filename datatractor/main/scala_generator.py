@@ -231,11 +231,11 @@ def generate_packet_class(p: Packet, package: str) -> (str, str):
 		decl.append("var " + name_and_type)
 		b_decl.append("  private[this] var %s = _" % name_and_type)
 
-		if ftype == "String":
+		if "String" in ftype:
 			imports.add("import java.nio.charset.StandardCharsets.UTF_8")
-		elif ftype == "UUID":
+		elif "UUID" in ftype:
 			imports.add("import java.util.UUID")
-		elif ftype == "TagCompound":
+		elif "TagCompound" in ftype:
 			imports.add("import com.electronwill.nbj.TagCompound")
 			imports.add("import com.electronwill.niol.compatibility._")
 		elif rawtype == "position":
