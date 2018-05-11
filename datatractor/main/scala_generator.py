@@ -367,7 +367,7 @@ object %s {
 	   mixin_declaration
 	   )
 
-	return pname, pclass.strip()
+	return pname, pclass.strip() + "\n"
 
 
 def write_packet_class(folder, packet, package):
@@ -395,8 +395,8 @@ import org.tuubes.craft.MinecraftProtocol
 object %s extends MinecraftProtocol {
   %s
 }
-	return sname, sclass.strip()
 """ % (package, package, sname, "\n  ".join(registrations))
+	return sname, sclass.strip() + "\n"
 
 
 def write_protocol_class(folder, sub_protocol, package):
