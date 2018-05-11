@@ -381,6 +381,7 @@ def write_packet_class(folder, packet, package):
 def generate_protocol_class(sub_protocol, package) -> (str, str):
 	registrations = []
 	sname = sub_protocol.name + "Protocol"
+	sub_protocol.serverbound.sort(key=lambda x: x.name)
 	for packet in sub_protocol.serverbound:
 		pname = packet.name + "Packet"
 		registrations.append("registerPacket(%s)" % pname)
