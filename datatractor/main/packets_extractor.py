@@ -197,7 +197,7 @@ class Field:
 
 	def __init__(self, name_str, type_str, comment):
 		# DEBUG print("Field: %s:%s, %s:%s, %s;%s" % (name_str, type(name_str), type_str, type(type_str), comment, type(comment)))
-		self.name_snake = to_snake_case(name_str)
+		self.name_snake = to_snake_case(name_str.replace("/", " or "))
 		self.name = to_camel_case(self.name_snake.replace("(", "").replace(")", ""))
 		self.type = type_str
 		self.comment = comment
