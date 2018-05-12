@@ -89,7 +89,7 @@ def niol_write(field_type: str) -> str:
 	if t.startswith("optional "):
 		x = t[9:]
 		write_x = niol_write(x)
-		return "if ($.isDefined) {\n      %s\n    }" % write_x
+		return "if ($.isDefined) {\n      %s\n    }" % write_x.replace("$", "$.get")
 
 	if t.startswith("array of"):
 		element_type = t.replace("array of ", "").split(" ")[0]
