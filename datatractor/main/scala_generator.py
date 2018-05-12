@@ -57,7 +57,7 @@ def niol_write(field_type: str) -> str:
 	"""
 	t: str = field_type.replace("enum", "").strip()
 	simple_dict = {
-		"boolean": "out.putBoolean($)",
+		"boolean": "out.putBool($)",
 		"byte": "out.putByte($)",
 		"short": "out.putShort($)",
 		"int": "out.putInt($)",
@@ -114,7 +114,7 @@ def niol_read(field_type: str, prefix: str = "val ") -> str:
 	"""
 	t: str = field_type.replace("enum", "").strip()
 	simple_dict = {
-		"boolean": prefix + "$ = in.getBoolean()",
+		"boolean": prefix + "$ = in.getBool()",
 		"byte": prefix + "$ = in.getByte()",
 		"short": prefix + "$ = in.getShort()",
 		"int": prefix + "$ = in.getInt()",
