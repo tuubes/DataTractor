@@ -278,7 +278,7 @@ def generate_packet_class(p: Packet, package: str) -> (str, str):
 			get2 = "    val x = %s >> 38" % fname
 			get3 = "    val y = (%s >> 26) & 0xfff" % fname
 			get4 = "    val z = %s << 38 >> 38" % fname
-			get5 = "    new Vec3i(x, y, z)"
+			get5 = "    new Vec3i(x.toInt, y.toInt, z.toInt)"
 			get6 = "  }"
 			additional_getters.append("\n".join([get1, get2, get3, get4, get5, get6]))
 		elif rawtype == "angle":
