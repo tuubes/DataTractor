@@ -157,6 +157,8 @@ def parse_table(table: Tag, trim: bool):
 			while (j < col_count) and (rows[i][j] is not None):
 				j += 1
 
+			# Remembers if it's a tr or th
+			is_header = (td.name == "th")
 			# Gets cell content and trims it if required
 			cell_content: List = td.contents
 			if trim:
@@ -181,9 +183,9 @@ def parse_table(table: Tag, trim: bool):
 			ispan = max(ispan, 1) # fix values <= 0
 			jspan = max(jspan, 1) # fix values <= 0
 			if ispan == jspan == 1:
-				rows[i][j] = HtmlCell(cell_content)
+				rows[i][j] = HtmlCell(cell_content, is_header)
 			else:
-				ref = BigCell(cell_content, ispan, jspan)
+				ref = BigCell(cell_content, is_header, ispan, jspan)
 				for xi in range(i, min(i + ispan, row_count)):
 					for xj in range(j, min(j + jspan, col_count)):
 						if xi == i and xj == j:
@@ -297,11 +299,14 @@ class HtmlSection:
 
 class HtmlCell:
 	"""A cell in a table"""
-	def __init__(self, content):
+	def __init__(self, content, is_header):
 		self.content = content
+		self.is_header = is_header
 
 	def __str__(self) -> str:
-		return f"HtmlCell \"{self.content}\""
+		prefix = "$" if self.is_header else ""
+		content = "ø" if self.is_empty() else f"\"{self.content}\""
+		return f"{prefix}HtmlCell {content}"
 
 	def __repr__(self):
 		return str(self)
@@ -318,18 +323,29 @@ class HtmlCell:
 	def is_left_ref(self) -> bool:
 		return False
 
+	def is_vertical(self) -> bool:
+		return self.rows() > 1
+
+	def is_horizontal(self) -> bool:
+		return self.columns() > 1
+
+	def is_empty(self) -> bool:
+		return self.content is None
+
 class BigCell(HtmlCell):
 	"""
 	A cell that lies in several rows and/or columns.
 	The BigCell is stored in its first table cell, the other occupied cells are filled with RefCells.
 	"""
-	def __init__(self, content, rowspan, colspan):
-		super().__init__(content)
+	def __init__(self, content, is_header, rowspan, colspan):
+		super().__init__(content, is_header)
 		self.rowspan = rowspan
 		self.colspan = colspan
 
 	def __str__(self) -> str:
-		return f"BigCell({self.rowspan}x{self.colspan}) \"{self.content}\""
+		prefix = "$" if self.is_header else ""
+		content = "ø" if self.is_empty() else f"\"{self.content}\""
+		return f"{prefix}BigCell({self.rowspan}x{self.colspan}) {content}"
 
 	def __repr__(self):
 		return str(self)
@@ -343,19 +359,22 @@ class BigCell(HtmlCell):
 class RefCell(HtmlCell):
 	"""Reference to a BigCell"""
 	def __init__(self, ref: BigCell):
-		super().__init__(ref.content)
+		super().__init__(ref.content, ref.is_header)
 		self.ref = ref
 
 	def __str__(self) -> str:
+		prefix = "$" if self.is_header else ""
 		if self.is_up_ref():
 			if self.is_left_ref():
-				return "<^RefCell"
+				arrow = "<^"
 			else:
-				return "^RefCell^"
+				return f"^{prefix}RefCell{prefix}^"
 		elif self.is_left_ref():
-			return "<-RefCell"
+			arrow = "<-"
 		else:
-			return "RefCell-?"
+			arrow = "??"
+		suffix = "ø" if self.ref.is_empty() else ""
+		return f"{arrow}{prefix}RefCell {suffix}"
 
 	def __repr__(self):
 		return str(self)
