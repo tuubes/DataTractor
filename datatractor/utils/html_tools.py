@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, List
 
 from bs4 import BeautifulSoup, NavigableString
 from bs4.element import Tag
@@ -9,6 +9,8 @@ headings = ["h1", "h2", "h3", "h4", "h5", "h6"]
 def get_text(element, joiner=" "):
 	if element is None:
 		return None
+	elif isinstance(element, HtmlCell):
+		return get_text(element.content)
 	elif isinstance(element, list):
 		if len(element) == 1:
 			return get_text(element[0])
@@ -23,6 +25,8 @@ def get_text(element, joiner=" "):
 def get_link(element):
 	if element is None:
 		return None
+	elif isinstance(element, HtmlCell):
+		return get_link(element.content)
 	elif isinstance(element, list):
 		for e in element:
 			link = get_link(e)
@@ -122,6 +126,8 @@ def flatten(container: Tag, trim: bool):
 
 def parse_table(table: Tag, trim: bool):
 	"""Parses a <table></table> and produces an HtmlTable."""
+	# First, we need to construct the arrays with the right number of rows and columns, in order to
+	# make the rowspan and colspan work
 	row_count = 0
 	col_count = 0
 	for tr in table.find_all("tr"):
@@ -133,49 +139,55 @@ def parse_table(table: Tag, trim: bool):
 				else:
 					col_count += 1
 
-	rows = []
-	empty_value = ""
+	rows: List[List[HtmlCell]] = []
 	for i in range(0, row_count):
-		row = []
-		for j in range(0, col_count):
-			row.append(empty_value)
+		row = [None] * col_count
 		rows.append(row)
 
-	i = 0
+	# Then we can fill the arrays with the cells' content
+	tr: Tag
+	td: Tag
+	i: int = 0 # row index
 	for tr in table.find_all("tr"):
-		j = 0
+		j: int = 0 # column index
 		for td in tr.find_all(["th", "td"]):
 			# Skips already populated cells, eg by rowspan or colspan
-			while (j < col_count) and (rows[i][j] is not empty_value):
+			while (j < col_count) and (rows[i][j] is not None):
 				j += 1
 
 			# Gets cell content and trims it if required
-			cell = td.contents
+			cell_content: List = td.contents
 			if trim:
 				clean_cell = []
-				for e in cell:
+				for e in cell_content:
 					if isinstance(e, str):
 						trimmed = e.strip()
 						if len(trimmed) > 0:
 							clean_cell.append(NavigableString(trimmed))
 					else:
 						clean_cell.append(e)
-				cell = clean_cell
-			if len(cell) == 1:
-				cell = cell[0]
-			elif len(cell) == 0:
-				cell = None
+				cell_content = clean_cell
 
-			if trim and isinstance(cell, str):
-				trimmed = cell.strip()
-				cell = NavigableString(trimmed) if len(trimmed) > 0 else None
+			if len(cell_content) == 0:
+				cell_content = None
+			elif len(cell_content) == 1:
+				cell_content = cell_content[0]
 
 			# Populates the cell(s) and respects rowspan and colspan if present
 			ispan = int(td["rowspan"]) if td.has_attr("rowspan") else 1
 			jspan = int(td["colspan"]) if td.has_attr("colspan") else 1
-			for xi in range(i, min(i + ispan, row_count)):
-				for xj in range(j, min(j + jspan, col_count)):
-					rows[xi][xj] = cell
+			ispan = max(ispan, 1) # fix values <= 0
+			jspan = max(jspan, 1) # fix values <= 0
+			if ispan == jspan == 1:
+				rows[i][j] = HtmlCell(cell_content)
+			else:
+				ref = BigCell(cell_content, ispan, jspan)
+				for xi in range(i, min(i + ispan, row_count)):
+					for xj in range(j, min(j + jspan, col_count)):
+						if xi == i and xj == j:
+							rows[xi][xj] = ref
+						else:
+							rows[xi][xj] = RefCell(ref)
 
 			j += jspan
 		i += 1
@@ -281,10 +293,64 @@ class HtmlSection:
 		return self.find(lambda e: isinstance(e, HtmlSection) and e.title == title)
 
 
+class HtmlCell:
+	"""A cell in a table"""
+	def __init__(self, content):
+		self.content = content
+
+	def __str__(self) -> str:
+		return "HtmlCell(content=%s)" % self.content
+
+	def columns(self) -> int:
+		return 1
+
+	def rows(self) -> int:
+		return 1
+
+	def is_up_ref(self) -> bool:
+		return False
+
+	def is_left_ref(self) -> bool:
+		return False
+
+class BigCell(HtmlCell):
+	"""
+	A cell that lies in several rows and/or columns.
+	The BigCell is stored in its first table cell, the other occupied cells are filled with RefCells.
+	"""
+	def __init__(self, content, rowspan, colspan):
+		super().__init__(content)
+		self.rowspan = rowspan
+		self.colspan = colspan
+
+	def columns(self):
+		return self.colspan
+
+	def rows(self):
+		return self.rowspan
+
+	def __str__(self) -> str:
+		return "BigCell(rows=%d,cols=%d,content=%s)" % (self.rows(), self.columns(), self.content)
+
+class RefCell(HtmlCell):
+	"""Reference to a BigCell"""
+	def __init__(self, ref: BigCell):
+		super().__init__(ref.content)
+		self.ref = ref
+
+	def is_up_ref(self):
+		return self.ref.columns() > 1
+
+	def is_left_ref(self):
+		return self.ref.rows() > 1
+
+	def __str__(self) -> str:
+		return "RefCell->%s" % self.ref
+
+
 class HtmlTable:
 	"""Represents an HTML table"""
-
-	def __init__(self, rows):
+	def __init__(self, rows: List[List[HtmlCell]]):
 		self.rows = rows
 
 	def __str__(self):
