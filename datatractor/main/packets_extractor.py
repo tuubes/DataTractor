@@ -35,14 +35,14 @@ def find_documentation(game_version: str):
 	for table in root.recursive_findall(lambda e: isinstance(e, HtmlTable)):
 		for row in table.rows[1:]:
 			release_name = get_text(row[0])
-			protocol = row[1]
+			protocol = get_text(row[1])
 			try:
 				protocol_number = int(protocol)
 			except:
 				protocol_number = None
-			doc_link = row[2]
+			doc_link = get_link(row[2])
 			if (release_name == game_version) and (doc_link is not None) and (protocol_number is not None):
-				url = doc_link["href"]
+				url = doc_link
 				if url[0] == "/":
 					url = "%s%s" % ("http://wiki.vg", url)
 
@@ -73,12 +73,15 @@ def extract_subprotocol(s: HtmlSection):
 	sb = [] if (s_serverbound is None) else [extract_packet(section) for section in s_serverbound.subs()]
 	return SubProtocol(subprotocol_name, cb, sb)
 
-
 def extract_packet(section: HtmlSection):
 	table: HtmlTable = section.find(lambda e: isinstance(e, HtmlTable))
 	packet_name = section.title
 	packet_id = table.get(1, 0)
 	packet_fields = []
+	print("----------------------------------------")
+	print(packet_name)
+	print(packet_id)
+	print(table)
 	# Analyses the header
 	name_col = None
 	type_col = None

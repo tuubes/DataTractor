@@ -21,6 +21,7 @@ def to_snake_varname(name: str):
 	rep = {"/": "_or_", "-": "minus", "+": "plus", "type": "typ", " ": "_"}
 	return multireplace(name.lower(), rep)
 
+
 def to_snake_classname(name: str):
 	rep = {"/": "_or_", "-": "", "+": "", " ": "_"}
 	return multireplace(re.sub("\(.*?\)", "", name), rep)
@@ -51,3 +52,37 @@ def multireplace(string, replacements) -> str:
 
 	# For each match, look up the new string in the replacements
 	return regexp.sub(lambda match: replacements[match.group(0)], string)
+
+
+def max_str_len(matrix):
+	max_length = 0
+	for row in matrix:
+		for cell in row:
+			max_length = max(max_length, len(str(cell)))
+	return max_length
+
+
+def max_str_len_bycolumn(matrix):
+	nrows = len(matrix)
+	ncols = len(matrix[0])
+	maximums = [0] * ncols
+	for j in range(0, ncols):
+		for i in range(0, nrows):
+			cell = matrix[i][j]
+			maximums[j] = max(maximums[j], len(str(cell)))
+	return maximums
+
+
+def pretty_matrix_str(matrix):
+	if len(matrix) == 0:
+		return ""
+	lengths = max_str_len_bycolumn(matrix)
+	res = []
+	for row in matrix:
+		line = []
+		j = 0
+		for element in row:
+			line.append(str(element).center(lengths[j]))
+			j += 1
+		res.append(" | ".join(line))
+	return "\n".join(res)

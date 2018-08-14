@@ -3,6 +3,8 @@ from typing import Callable, List
 from bs4 import BeautifulSoup, NavigableString
 from bs4.element import Tag
 
+from utils.string_tools import pretty_matrix_str
+
 headings = ["h1", "h2", "h3", "h4", "h5", "h6"]
 
 
@@ -299,7 +301,10 @@ class HtmlCell:
 		self.content = content
 
 	def __str__(self) -> str:
-		return "HtmlCell(content=%s)" % self.content
+		return f"HtmlCell \"{self.content}\""
+
+	def __repr__(self):
+		return str(self)
 
 	def columns(self) -> int:
 		return 1
@@ -323,14 +328,17 @@ class BigCell(HtmlCell):
 		self.rowspan = rowspan
 		self.colspan = colspan
 
+	def __str__(self) -> str:
+		return f"BigCell({self.rowspan}x{self.colspan}) \"{self.content}\""
+
+	def __repr__(self):
+		return str(self)
+
 	def columns(self):
 		return self.colspan
 
 	def rows(self):
 		return self.rowspan
-
-	def __str__(self) -> str:
-		return "BigCell(rows=%d,cols=%d,content=%s)" % (self.rows(), self.columns(), self.content)
 
 class RefCell(HtmlCell):
 	"""Reference to a BigCell"""
@@ -338,14 +346,25 @@ class RefCell(HtmlCell):
 		super().__init__(ref.content)
 		self.ref = ref
 
+	def __str__(self) -> str:
+		if self.is_up_ref():
+			if self.is_left_ref():
+				return "<^RefCell"
+			else:
+				return "^RefCell^"
+		elif self.is_left_ref():
+			return "<-RefCell"
+		else:
+			return "RefCell-?"
+
+	def __repr__(self):
+		return str(self)
+
 	def is_up_ref(self):
-		return self.ref.columns() > 1
+		return self.ref.rows() > 1 # ref cell is vertical
 
 	def is_left_ref(self):
-		return self.ref.rows() > 1
-
-	def __str__(self) -> str:
-		return "RefCell->%s" % self.ref
+		return self.ref.columns() > 1 # ref cell is horizontal
 
 
 class HtmlTable:
@@ -354,7 +373,7 @@ class HtmlTable:
 		self.rows = rows
 
 	def __str__(self):
-		return "HtmlTable(size=%d, rows=%s)" % (self.cell_count(), self.rows)
+		return pretty_matrix_str(self.rows)
 
 	def __repr__(self):
 		return self.__str__()
