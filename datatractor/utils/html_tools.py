@@ -237,6 +237,20 @@ class HtmlSection:
 				return e
 		return None
 
+	def find2(self, f: Callable):
+		"""
+		Finds the first element that matches the given condition and the non-matching elements just before it.
+		:param f: the condition to check against each element, including the sub-sections
+		:return: the first element that matches and the non-matching element just before it
+		"""
+		before = None
+		for e in self.content:
+			if f(e):
+				return before, e
+			else:
+				before = e
+		return before, None
+
 	def findall(self, f: Callable):
 		"""
 		Finds all the elements that match the given condition.
@@ -246,6 +260,19 @@ class HtmlSection:
 		for e in self.content:
 			if f(e):
 				yield e
+
+	def findall2(self, f: Callable):
+		"""
+		Finds all the elements that match the given condition and the non-matching elements just before them.
+		:param f: the condition to check against each element, including the sub-sections
+		:return: a generator that returns the maching elements and the non-matching elements just before them
+		"""
+		before = None
+		for e in self.content:
+			if f(e):
+				yield before, e
+			else:
+				before = e
 
 	def recursive_find(self, f: Callable):
 		"""
@@ -262,6 +289,24 @@ class HtmlSection:
 					return rec
 		return None
 
+	def recursive_find2(self, f: Callable):
+		"""
+		Recursively finds the first element that match the given condition and the non-matching elements just before it.
+		:param f: the condition to check against each element, including the sub-sections
+		:return: the first element that matches and the non-matching element just before it
+		"""
+		before = None
+		for e in self.content:
+			if f(e):
+				return before, e
+			elif isinstance(e, HtmlSection):
+				before, rec = e.recursive_find2(f)
+				if rec:
+					return rec
+			else:
+				before = e
+		return before, None
+
 	def recursive_findall(self, f: Callable):
 		"""
 		Recursively finds all the elements that match the given condition.
@@ -273,6 +318,21 @@ class HtmlSection:
 				yield e
 			elif isinstance(e, HtmlSection):
 				yield from e.recursive_findall(f)
+
+	def recursive_findall2(self, f: Callable):
+		"""
+		Recursively finds all the elements that match the given condition and the non-matching elements just before them.
+		:param f: the condition to check against each element, including the sub-sections
+		:return: a generator that returns the maching elements and the non-matching elements just before them
+		"""
+		before = None
+		for e in self.content:
+			if f(e):
+				yield before, e
+			elif isinstance(e, HtmlSection):
+				yield from e.recursive_findall2(f)
+			else:
+				before = e
 
 	def subs(self):
 		"""
