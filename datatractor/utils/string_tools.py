@@ -27,6 +27,16 @@ def classname(name: str):
 	return pascal_case(multireplace(re.sub("\(.*?\)", "", name), rep))
 
 
+def plural(noun: str):
+	last = noun[-1]
+	if last == "y":
+		return noun[:-1] + "ies"
+	elif last == "h":
+		return noun[:-1] + "es"
+	else:
+		return noun + "s"
+
+
 def parametrize(val: str, placeholder: str, param: str) -> str:
 	if param:
 		return val.replace(placeholder, param)
