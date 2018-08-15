@@ -19,12 +19,26 @@ def snake_case(s: str) -> str:
 
 def varname(name: str):
 	rep = {"/": "_or_", "-": "minus", "+": "plus", "type": "typ", " ": "_"}
-	return camel_case(multireplace(name, rep))
+	return camel_case(multireplace(name.lower(), rep))
 
 
 def classname(name: str):
 	rep = {"/": "_or_", "-": "", "+": "", " ": "_"}
-	return pascal_case(multireplace(re.sub("\(.*?\)", "", name), rep))
+	return pascal_case(multireplace(re.sub("\(.*?\)", "", name.lower()), rep))
+
+
+def constname(name: str):
+	rep = {"/": "_or_", "-": "minus", "+": "plus", "type": "typ", " ": "_"}
+	return multireplace(name.lower(), rep).upper()
+
+
+def typename(name: str):
+	rep = {"_enum": "", "enum": "", "/": "_or_", "-": "", "+": "", " ": "_"}
+	res = multireplace(name.lower(), rep)
+	res = re.sub(r"array_of(.+)", r"Array[\1]", res)
+	res = re.sub(r"optional(.+)", r"Option[\1]", res)
+	res = re.sub(r"(.+)array", r"Array[\1]", res)
+	return pascal_case(res.strip())
 
 
 def plural(noun: str):
