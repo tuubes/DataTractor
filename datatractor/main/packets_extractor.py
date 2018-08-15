@@ -79,53 +79,31 @@ def extract_subprotocol(s: HtmlSection):
 
 
 def extract_packet(section: HtmlSection):
-	table: HtmlTable = section.find(lambda e: isinstance(e, HtmlTable))
-	packet_name = section.title
-	packet_id = table.get(1, 0)
+	table: HtmlTable
+	itable: int
+	table, itable = section.find_i(lambda e: isinstance(e, HtmlTable))
+
 	packet_fields = []
-	print("----------------------------------------")
-	print(packet_name)
-	print(packet_id)
+	print("========================================")
 	print(table)
-	return "WIP"
+	print("   ----------------------------------   ")
 
-	# Analyses the header
-	name_col = None
-	type_col = None
-	comment_col = None
-	comment_cols = []
-	for j in range(table.column_count() - 1, -1, -1):
-		cell = table.get(0, j)
-		if cell.lower() == "field name":
-			if name_col is None:
-				name_col = j
-			else:
-				# adds any additional information as a comment:
-				comment_cols.append(j)
-		if (cell.lower() == "field type") and (type_col is None):
-			type_col = j
-		if (cell.lower() == "notes") and (comment_col is None):
-			comment_col = j
+	p = PacketInfos(section)
+	print(f"name: {p.main_compound.name}")
+	print(f"id: {hex(p.main_id)} = {p.main_id}")
 
-	name_col = 3 if (name_col is None) else name_col
-	type_col = 4 if (type_col is None) else type_col
-	comment_col = 5 if (comment_col is None) else comment_col
-	comment_cols.append(comment_col)
+	# Parse the main table
+	names_col, types_col, notes_col = find_compound_columns(table)
+	ctx = LocalContext(table, names_col, types_col, notes_col)
+	parse_compound(ctx, p, 1, p.main_compound, table.row_count())
 
-	# Parses the table
-	for row in table.row_count[1:]:  # [1:] to skip the header
-		field_name = get_text(row[name_col])
-		field_type = get_text(row[type_col])
-		field_comment = get_text([row[j] for j in comment_cols], "; ")
-		# DEBUG print("row: %s, %s, %s" % (field_name, field_type, field_comment))
-		if field_type:
-			field = Field(field_name, field_type, field_comment)
-			packet_fields.append(field)
-	# DEBUG print(field)
-	return Packet(packet_name, packet_id, packet_fields)
+	# Parse the data below the main table
+	parse_below(p)
+	print("========================================")
+	return p
 
 
-def parse_compound(ctx: LocalContext, p: PacketContext, row, compound, nrows):
+def parse_compound(ctx: LocalContext, p: PacketInfos, row, compound, nrows):
 	global idx0
 	end = row + nrows
 	assert end <= ctx.rowlimit, f"Invalid end {end} = {row} + {nrows} for compound {compound}"
@@ -201,6 +179,8 @@ def parse_compound(ctx: LocalContext, p: PacketContext, row, compound, nrows):
 				p.register_field(field)
 				last_field = field
 
+				# Detect if the field is an enum with values defined in the field's notes
+				# ... And admire the different syntaxes used in the documentation ><
 				idx0 = None
 				if "-1:" in field_notes:
 					idx0 = field_notes.index("-1:")
@@ -259,10 +239,138 @@ def parse_compound(ctx: LocalContext, p: PacketContext, row, compound, nrows):
 						enum.add_entry(entry)
 					p.register_enum(enum)
 
-
-
 		i += 1
 	if current_switch is not None:
 		compound.add_switch(current_switch)
 	return i
 
+
+def parse_below(p: PacketInfos):
+	# Put the longer names first to get the most specific result when searching the related field:
+	fields = sorted(p.dict_fields.values(), key=lambda f: len(f.name), reverse=True)
+	last: str = None
+	for elem in p.below_main:
+		if isinstance(elem, HtmlTable):
+			last = None
+			# Find the table's meaning: Compound or Enum?
+			compound_columns = find_compound_columns(elem)
+			is_enum = (compound_columns is None)
+
+			# Find the related field
+			row0: List[str] = [cell.content for cell in elem.rows[0]]
+			related_field: Field = None
+			for field in fields:
+				if is_enum and field.enum is not None:
+					# The field shouldn't have an enum already defined
+					continue
+				if field.name in last or field.name in row0:
+					related_field = field
+					break
+
+			# Parse the data
+			# Enum data -----------------------------
+			if is_enum:
+				if related_field is None:
+					print(f"[WARNING] Enum-like table found without a corresponding field")
+				else:
+					# Find which column contains the values
+					values_col = 0
+					row1 = [cell.content for cell in elem.rows[1]]
+					for icol, content in enumerate(row1):
+						if re.fullmatch("\\d+", content.strip()):
+							values_col = icol
+							break
+					# Find which column contains the names
+					names_col = values_col + 1
+					for icol, content in enumerate(row0):
+						if icol != values_col and related_field.name.lower() == content.lower():
+							names_col = icol
+							break
+					# Parse the enum entries
+					enum = Enum(related_field)
+					for entry_row in elem.rows[1:]:
+						entry = parse_enum_entry(entry_row[values_col], entry_row[names_col])
+						enum.add_entry(entry)
+			# Compound data -------------------------
+			else:  # Compound data
+				names_col, types_col, notes_col = compound_columns
+				ctx = LocalContext(elem, names_col, types_col, notes_col)
+				if related_field is None:
+					compound_name = classname(last.replace(" structure", ""))
+				else:
+					compound_name = classname(related_field.name)
+				compound = Compound(compound_name, related_field)
+				parse_compound(ctx, p, 1, compound, ctx.rowlimit)
+				p.register_compound(compound)
+		# Enum data in list -------------------------
+		# (often used in the old protocol documentation)
+		elif isinstance(elem, HtmlList):  # Enum data in list
+			last = None
+			# Find the related field
+			related_field: Field = None
+			for (name, field) in p.dict_fields.items():
+				if field.enum is None and name in last:
+					# The field shouldn't have an enum already defined
+					related_field = field
+					break
+			if related_field is not None:
+				# Parse the enum fields
+				enum = Enum(related_field)
+				for li in elem.elements:
+					if isinstance(li, str):
+						entry = parse_enum_textentry(li)
+						if entry is None:
+							continue
+						else:
+							enum.add_entry(entry)
+		else:
+			last = get_text(elem)
+
+
+def parse_enum_textentry(text: str):
+	parts = text.split(':', maxsplit=1)
+	if len(parts) < 2:
+		return None
+	return parse_enum_entry(parts[0], parts[1])
+
+
+def parse_enum_entry(entry_value: str, entry_name: str):
+	entry_value = entry_value.strip()
+	entry_name = entry_name.strip()
+	if "(" in entry_name:
+		parts = entry_name.split("(", 1)
+		entry_name = parts[0]
+		entry_comments = parts[1].replace(")", "", 1)
+	else:
+		entry_comments = None
+	if len(entry_name) > 20:
+		entry_comments = entry_name + entry_comments
+		entry_name = entry_name[:20]
+	entry_name = constname(entry_name)
+	return EnumEntry(entry_value, entry_name, entry_comments)
+
+
+def find_compound_columns(table: HtmlTable):
+	# default values
+	names_col = None
+	types_col = None
+	notes_col = None
+
+	# search
+	first_row = table.rows[0]
+	ncol = len(first_row)
+	i = 0
+	while i < ncol:
+		cell = first_row[i]
+		i += 1
+		if not isinstance(cell, RefCell):
+			text = get_text(cell).strip().lower()
+			if text == "field name":
+				names_col = i
+			elif text == "field type":
+				types_col = i
+			elif text == "notes":
+				notes_col = i
+	if not all([names_col, types_col, notes_col]):  # all are None
+		return None
+	return names_col, types_col, notes_col  # some aren't None

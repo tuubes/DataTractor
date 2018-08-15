@@ -105,9 +105,16 @@ def contains_headings(tag: Tag):
 			return True
 	return False
 
+
 def contains_table(tag: Tag):
 	"""Returns true if the tag contains an html table."""
 	return tag.find("table")
+
+
+def contains_list(tag: Tag):
+	"""Returns true if the tag contains an html list."""
+	return tag.find(["ol", "ul"])
+
 
 def flatten(container: Tag, trim: bool):
 	"""Iterates over the children of the container, flattening the <div> tags and parsing the <table> tags."""
@@ -117,6 +124,8 @@ def flatten(container: Tag, trim: bool):
 			yield from flatten(c, trim)
 		elif is_tag and c.name == "table":
 			yield parse_table(c, trim)
+		elif is_tag and c.name in ["ol", "ul"]:
+			yield parse_list(c, trim)
 		else:
 			if trim and isinstance(c, str):
 				trimmed = c.strip()
@@ -124,6 +133,31 @@ def flatten(container: Tag, trim: bool):
 					yield NavigableString(trimmed)
 			else:
 				yield c
+
+
+def parse_list(list: Tag, trim: bool):
+	"""Parses a <ol></ol> or <ul></ul> and produces an HtmlList."""
+	elements = []
+	ordered = (list.name == "ol")
+	e: Tag
+	for e in list.find_all("li"):
+		inside = e.contents
+		if isinstance(inside, list) and len(inside) == 1:
+			inside = inside[0]
+		if isinstance(inside, Tag):
+			if inside.name in ["ol", "ul"]:
+				elements.append(parse_list(inside, trim))
+				continue
+			elif inside.name == "table":
+				elements.append(parse_table(inside, trim))
+				continue
+		if trim and isinstance(e, str):
+			trimmed = e.strip()
+			if len(trimmed) > 0:
+				elements.append(NavigableString(trimmed))
+		else:
+			elements.append(get_text(inside))
+	return HtmlList(elements, ordered)
 
 
 def parse_table(table: Tag, trim: bool):
@@ -201,7 +235,7 @@ def parse_table(table: Tag, trim: bool):
 class HtmlSection:
 	"""Represents a hierarchized part of an HTML document"""
 
-	def __init__(self, level: int, title: str, html_id: str, content: list):
+	def __init__(self, level: int, title: str, html_id: str, content: List[Tag]):
 		self.level = level
 		self.title = title
 		self.html_id = html_id
@@ -237,19 +271,16 @@ class HtmlSection:
 				return e
 		return None
 
-	def find2(self, f: Callable):
+	def find_i(self, f: Callable):
 		"""
-		Finds the first element that matches the given condition and the non-matching elements just before it.
+		Finds the first element that matches the given condition;
 		:param f: the condition to check against each element, including the sub-sections
-		:return: the first element that matches and the non-matching element just before it
+		:return: the first element that matches and its index, or (None, -1) if not found
 		"""
-		before = None
-		for e in self.content:
+		for (i, e) in enumerate(self.content):
 			if f(e):
-				return before, e
-			else:
-				before = e
-		return before, None
+				return e, i
+		return None, -1
 
 	def findall(self, f: Callable):
 		"""
@@ -261,18 +292,15 @@ class HtmlSection:
 			if f(e):
 				yield e
 
-	def findall2(self, f: Callable):
+	def findall_i(self, f: Callable):
 		"""
-		Finds all the elements that match the given condition and the non-matching elements just before them.
+		Finds all the elements that match the given condition.
 		:param f: the condition to check against each element, including the sub-sections
-		:return: a generator that returns the maching elements and the non-matching elements just before them
+		:return: a generator that returns the maching elements with their indexes, as (elem, index) tuples
 		"""
-		before = None
-		for e in self.content:
+		for (i, e) in enumerate(self.content):
 			if f(e):
-				yield before, e
-			else:
-				before = e
+				yield e, i
 
 	def recursive_find(self, f: Callable):
 		"""
@@ -289,24 +317,6 @@ class HtmlSection:
 					return rec
 		return None
 
-	def recursive_find2(self, f: Callable):
-		"""
-		Recursively finds the first element that match the given condition and the non-matching elements just before it.
-		:param f: the condition to check against each element, including the sub-sections
-		:return: the first element that matches and the non-matching element just before it
-		"""
-		before = None
-		for e in self.content:
-			if f(e):
-				return before, e
-			elif isinstance(e, HtmlSection):
-				before, rec = e.recursive_find2(f)
-				if rec:
-					return rec
-			else:
-				before = e
-		return before, None
-
 	def recursive_findall(self, f: Callable):
 		"""
 		Recursively finds all the elements that match the given condition.
@@ -318,21 +328,6 @@ class HtmlSection:
 				yield e
 			elif isinstance(e, HtmlSection):
 				yield from e.recursive_findall(f)
-
-	def recursive_findall2(self, f: Callable):
-		"""
-		Recursively finds all the elements that match the given condition and the non-matching elements just before them.
-		:param f: the condition to check against each element, including the sub-sections
-		:return: a generator that returns the maching elements and the non-matching elements just before them
-		"""
-		before = None
-		for e in self.content:
-			if f(e):
-				yield before, e
-			elif isinstance(e, HtmlSection):
-				yield from e.recursive_findall2(f)
-			else:
-				before = e
 
 	def subs(self):
 		"""
@@ -455,7 +450,7 @@ class HtmlTable:
 		return pretty_matrix_str(self.rows)
 
 	def __repr__(self):
-		return self.__str__()
+		return str(self)
 
 	@property
 	def name(self):
@@ -504,4 +499,21 @@ class HtmlTable:
 		for row in self.rows:
 			if f(row):
 				return row
+		return None
+
+
+class HtmlList:
+	"""Represents an HTML list, ordered or unordered"""
+	def __init__(self, elements: list, ordered: bool):
+		self.elements = elements
+		self.is_ordered = ordered
+
+	def __str__(self):
+		return f"HtmlList{str(self.elements)}"
+
+	def __repr__(self):
+		return str(self)
+
+	@property
+	def name(self):
 		return None

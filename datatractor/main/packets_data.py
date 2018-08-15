@@ -1,4 +1,4 @@
-from typing import Tuple, Any, Dict, Set, List
+from typing import Any, Dict, Set
 
 from utils.html_tools import *
 from utils.string_tools import *
@@ -12,6 +12,10 @@ class Field:
 		self.name = name
 		self.type = type
 		self.comment = comment
+		# Additional fields
+		self.enum = None
+		self.switch = None
+		self.compound = None
 
 	def __repr__(self):
 		return "Field(%s: %s // %s)" % (self.name, self.type, self.comment)
@@ -81,21 +85,6 @@ class Enum:
 		self.entries.append(entry)
 
 
-class Packet:
-	"""A packet"""
-
-	def __init__(self, name: str, id: int, fields):
-		self.name = name
-		self.id = id
-		self.fields = fields
-
-	def __repr__(self):
-		return "Packet(%s, %s, %s)" % (self.name, self.id, repr(self.fields))
-
-	def __str__(self):
-		return "Packet(%s, %s, %d fields)" % (self.name, self.id, len(self.fields))
-
-
 class Protocol:
 	"""Full Minecraft protocol"""
 
@@ -134,44 +123,29 @@ class SubProtocol:
 	def packet_count(self):
 		return len(self.clientbound) + len(self.serverbound)
 
-	def clientbound_byname(self, packet_name: str):
-		snake = snake_case(packet_name)
-		for packet in self.clientbound:
-			if packet.name_snake == snake:
-				return packet
-		return None
 
-	def serverbound_byname(self, packet_name: str):
-		snake = snake_case(packet_name)
-		for packet in self.serverbound:
-			if packet.name_snake == snake:
-				return packet
-		return None
-
-	def clientbound_byid(self, packet_id: int):
-		return self.clientbound[packet_id]
-
-	def serverbound_byid(self, packet_id: int):
-		return self.serverbound[packet_id]
-
-
-class PacketContext:
+class PacketInfos:
 	"""
 	Stores data during the packet construction
 	"""
-	tables_data: List[Tuple[Any, HtmlTable]]
-	main_above: object
+	section: HtmlSection
 	main_table: HtmlTable
-	dict_fields: Dict[str, Field]
-	dict_switches: Dict[str, Switch]
-	dict_compounds: Dict[str, Compound]
-	dict_enums: Dict[str, Enum]
-	set_used_types: Set[str]
+	below_main: List[Any]
+	main_compound: Compound # not registered in dict_compounds
+	main_id: int
+	dict_fields: Dict[str, Field] # contains also the sub-fields
+	dict_switches: Dict[str, Switch] # contains also the sub-switches
+	dict_compounds: Dict[str, Compound] # contains also the sub-compound
+	dict_enums: Dict[str, Enum] # contains also the sub-enums
+	set_used_types: Set[str] # contains all the used types
 
-	def __init__(self, tables_with_above_elements: List[Tuple[Any, HtmlTable]]):
-		self.tables_data = tables_with_above_elements
-		self.main_above = tables_with_above_elements[0][0]
-		self.main_table = tables_with_above_elements[0][1]
+	def __init__(self, section: HtmlSection):
+		self.section = section
+		t, i = section.find_i(lambda x: isinstance(x, HtmlTable))
+		self.main_table = t
+		self.below_main = section.content[i + 1:]
+		self.main_compound = Compound(classname(section.title))
+		self.main_id = int(t.get(1, 0), base=0) # second row first column
 		self.dict_fields = {}
 		self.dict_switches = {}
 		self.dict_compounds = {}
@@ -201,34 +175,15 @@ class LocalContext:
 	"""
 	Stores local data during the packet construction
 	"""
+	notes_col: int
+	types_col: int
+	names_col: int
 	rowlimit: int
-	above_table: object
 	table: List[List[HtmlCell]]
 
-	def __init__(self, table_with_above: Tuple[Any, HtmlTable]):
-		self.above_table = table_with_above[0]
-		self.table = table_with_above[1].rows
-		self.rowlimit = len(self.table)
-
-		# Detect the field_names, field_types and field_notes columns
-		first_row = self.table[0]
-		ncol = len(first_row)
-		i = 0
-		while i < ncol:
-			cell = first_row[i]
-			i += 1
-			if not isinstance(cell, RefCell):
-				text = get_text(cell).strip().lower()
-				if text == "field name":
-					self.names_col = i
-				elif text == "field type":
-					self.types_col = i
-				elif text == "notes":
-					self.notes_col = i
-		# Standard detection didn't work, assign some default values
-		if self.names_col is None:
-			self.names_col = 0
-		if self.types_col is None:
-			self.types_col = 1
-		if self.notes_col is None:
-			self.notes_col = ncol - 1
+	def __init__(self, table, names_col, types_col, notes_col):
+		self.table = table.rows
+		self.rowlimit = len(table)
+		self.names_col = 0 if names_col is None else names_col
+		self.types_col = self.names_col + 1 if types_col is None else types_col
+		self.notes_col = len(table[0]) - 1 if notes_col is None else notes_col
