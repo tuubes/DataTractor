@@ -33,7 +33,7 @@ def find_documentation(game_version: str):
 	html = requests.get("http://wiki.vg/Protocol_version_numbers").text
 	root = make_hierarchy(BeautifulSoup(html, "lxml"))[0]
 	for table in root.recursive_findall(lambda e: isinstance(e, HtmlTable)):
-		for row in table.rows[1:]:
+		for row in table.row_count[1:]:
 			release_name = get_text(row[0])
 			protocol = get_text(row[1])
 			try:
@@ -106,7 +106,7 @@ def extract_packet(section: HtmlSection):
 	comment_cols.append(comment_col)
 
 	# Parses the table
-	for row in table.rows[1:]:  # [1:] to skip the header
+	for row in table.row_count[1:]:  # [1:] to skip the header
 		field_name = get_text(row[name_col])
 		field_type = get_text(row[type_col])
 		field_comment = get_text([row[j] for j in comment_cols], "; ")

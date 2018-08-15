@@ -64,8 +64,8 @@ def gather_block_infos(block_id, block_mc_name, block_nice_name, block_url):
 		return None
 
 	props_table = parse_table(table_tag, True)
-	for row in props_table.rows:
-		prop_name = to_snake_case(get_text(row[0]).strip())
+	for row in props_table.row_count:
+		prop_name = snake_case(get_text(row[0]).strip())
 		prop_value = row[1]
 		props[prop_name] = prop_value
 

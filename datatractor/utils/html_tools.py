@@ -311,10 +311,10 @@ class HtmlCell:
 	def __repr__(self):
 		return str(self)
 
-	def columns(self) -> int:
+	def column_count(self) -> int:
 		return 1
 
-	def rows(self) -> int:
+	def row_count(self) -> int:
 		return 1
 
 	def is_up_ref(self) -> bool:
@@ -324,10 +324,10 @@ class HtmlCell:
 		return False
 
 	def is_vertical(self) -> bool:
-		return self.rows() > 1
+		return self.row_count() > 1
 
 	def is_horizontal(self) -> bool:
-		return self.columns() > 1
+		return self.column_count() > 1
 
 	def is_empty(self) -> bool:
 		return self.content is None
@@ -350,10 +350,10 @@ class BigCell(HtmlCell):
 	def __repr__(self):
 		return str(self)
 
-	def columns(self):
+	def column_count(self):
 		return self.colspan
 
-	def rows(self):
+	def row_count(self):
 		return self.rowspan
 
 class RefCell(HtmlCell):
@@ -380,10 +380,10 @@ class RefCell(HtmlCell):
 		return str(self)
 
 	def is_up_ref(self):
-		return self.ref.rows() > 1 # ref cell is vertical
+		return self.ref.row_count() > 1 # ref cell is vertical
 
 	def is_left_ref(self):
-		return self.ref.columns() > 1 # ref cell is horizontal
+		return self.ref.column_count() > 1 # ref cell is horizontal
 
 
 class HtmlTable:

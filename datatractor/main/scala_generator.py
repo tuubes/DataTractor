@@ -260,7 +260,7 @@ def generate_packet_class(p: Packet, package: str) -> (str, str):
 
 		construct.append(fname)
 
-		fcapital = to_pascal_case(field.name_snake)
+		fcapital = pascal_case(field.name_snake)
 		with1 = "  def with%s(%s): %s[P with %s] = {" % (fcapital, name_and_type, bname, fcapital)
 		with2 = "    this.%s = %s" % (fname, fname)
 		with3 = "    this.asInstanceOf[%s[P with %s]]" % (bname, fcapital)
