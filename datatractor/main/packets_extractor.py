@@ -96,7 +96,7 @@ def extract_packet(section: HtmlSection):
 	l = []
 	str_compound(l, p.main_compound, newline=False)
 	print("".join(l))
-	print("="*50)
+	print("=" * 50)
 	return p
 
 
@@ -117,17 +117,17 @@ def parse_compound(ctx: LocalContext, p: PacketInfos, row, compound, nrows):
 			continue
 		type_cell = ctx.table[i][ctx.types_col]
 		notes_cell = ctx.table[i][ctx.notes_col]
-		field_name = get_text(name_cell)
-		if field_name is None:
+		low_field_name = get_text(name_cell)
+		if low_field_name is None:
 			# Fix for packets that have no field and don't state "no fields" clearly
 			i += 1
 			continue
-		field_name = field_name.lower()
+		low_field_name = low_field_name.lower().strip()
 		field_type = get_text(type_cell)
 		field_type = "" if field_type is None else field_type.lower()
 		field_notes = get_text(notes_cell)
-		if not field_name.startswith("no field") and not field_type.startswith("no field"):
-			field_name = varname(field_name.strip())
+		if not low_field_name.startswith("no field") and not field_type.startswith("no field"):
+			field_name = varname(low_field_name)
 			field_type = typename(field_type)
 			# Defines the field of the following switch ---------
 			if name_cell.is_header:
@@ -137,14 +137,14 @@ def parse_compound(ctx: LocalContext, p: PacketInfos, row, compound, nrows):
 				else:
 					switch_field = maybe_switch_field
 			# Switch entry --------------------------------------
-			elif re.fullmatch("\\d+\\s*:.*", field_name):
+			elif re.fullmatch("\\d+\\s*:.*", low_field_name):
 				if current_switch is None:  # new switch
 					if switch_field is None:  # should NOT happen
 						print(f"[ERROR] Invalid switch: no corresponding field")
 					else:
 						current_switch = Switch(switch_field)
 				if current_switch is not None:
-					split = field_name.split(':', 1)
+					split = low_field_name.split(':', 1)
 					entry_value = split[0]
 					entry_name = classname(snake_case(split[1].strip()))
 					s = SwitchEntry(entry_value, entry_name)
@@ -164,7 +164,7 @@ def parse_compound(ctx: LocalContext, p: PacketInfos, row, compound, nrows):
 					print(f"[WARNING] Nested compound with type {field_type}, expected Array")
 
 				# Parse the compound structure
-				compound_name = classname(field_name)
+				compound_name = classname(snake_case(low_field_name))
 				compound_nested = Compound(compound_name)
 				ctx.names_col += 1  # move right
 				ctx.types_col += 1  # move the type too, it's not a switch
@@ -175,14 +175,16 @@ def parse_compound(ctx: LocalContext, p: PacketInfos, row, compound, nrows):
 
 				# Create the corresponding field in the current compound
 				field_type = f"Array[{compound_name}]"
-				field_name = plural(field_name)
-				field = Field(field_name, field_type, field_notes)
+				low_field_name = plural(low_field_name)
+				field = Field(low_field_name, field_type, field_notes)
+				field.compound = compound_nested
 				compound.add_field(field)
 				p.register_field(field)
 				switch_field = field
 			# Single field ---------------------------------------
 			else:
-				field = Field(field_name, field_type, field_notes)
+				field_type, field_maxlength = extract_type_and_length(field_type)
+				field = Field(field_name, field_type, field_notes, field_maxlength)
 				compound.add_field(field)
 				p.register_field(field)
 				switch_field = field
@@ -197,6 +199,12 @@ def parse_compound(ctx: LocalContext, p: PacketInfos, row, compound, nrows):
 						idx0 = field_notes.index("0:")
 					elif "0 :" in field_notes:
 						idx0 = field_notes.index("0 :")
+					elif "0xF0 =" in field_notes:  # priority over "0 ="
+						is_semi_byte_a = (field_notes.count('=') == 2) and ("0x0F" in field_notes)
+						is_semi_byte_b = "4 most significant bits" in field_notes
+						if not is_semi_byte_a and not is_semi_byte_b:
+							idx0 = field_notes.index("0xF0 =")
+							field_notes = field_notes.replace(" =", ':').replace('=', ':')
 					elif "0 =" in field_notes:
 						idx1 = field_notes.index("1 =") if "1 =" in field_notes else inf
 						idx0 = field_notes.index("0 =")
@@ -206,9 +214,6 @@ def parse_compound(ctx: LocalContext, p: PacketInfos, row, compound, nrows):
 						idx1 = field_notes.index("1=") if "1=" in field_notes else inf
 						idx0 = field_notes.index("0=")
 						idx0 = min(idx0, idx1)
-						field_notes = field_notes.replace(" =", ':').replace('=', ':')
-					elif "0xF0 =" in field_notes:
-						idx0 = field_notes.index("0xF0 =")
 						field_notes = field_notes.replace(" =", ':').replace('=', ':')
 					elif "1 for" in field_notes:
 						idx0 = field_notes.index("1 for")
@@ -229,9 +234,7 @@ def parse_compound(ctx: LocalContext, p: PacketInfos, row, compound, nrows):
 					sub = field_notes[idx0:]
 					split = sub.split(';') if ';' in sub else sub.split(',')
 					for s in split:
-						entry = parse_enum_textentry(s)
-						if entry is not None:
-							enum.add_entry(entry)
+						parse_enum_textentry(enum, s)
 
 		i += 1
 	if current_switch is not None:
@@ -239,51 +242,107 @@ def parse_compound(ctx: LocalContext, p: PacketInfos, row, compound, nrows):
 	return i
 
 
+def can_be_related(field: Field, is_enum: bool):
+	comment = "" if field.comment is None else field.comment.lower()
+	not_enum = not is_enum or (field.enum is None)
+	not_compound = is_enum or (field.compound is None)
+	compatible_type = field.type not in ["Boolean", "Array", "Float", "Double", "Long"]
+	comment_hint_ok = all(x not in comment for x in ["number", "offset", "length", "count"])
+	return not_enum and not_compound and compatible_type and comment_hint_ok
+
+
 def parse_below(p: PacketInfos):
 	# Put the longer names first to get the most specific result when searching for the related field:
-	fields = sorted(p.dict_fields.values(), key=lambda f: len(f.name), reverse=True)
+	fields = sorted(p.all_fields, key=lambda f: len(f.name), reverse=True)
 	last: str = ""
 	for elem in p.below_main:
 		if isinstance(elem, HtmlTable):
-			if "Optional advancement display" in str(elem):
-				print("HEY")
-			last = ""
 			# Find the table's meaning: Compound or Enum?
 			compound_columns = find_compound_columns(elem)
+			attribute_columns = find_attribute_columns(elem)
 			is_enum = (compound_columns is None)
+			is_attr = (attribute_columns is not None)
 
 			# Find the related field
 			row0: List[str] = [get_text(cell).lower() for cell in elem.rows[0]]
+			compatible_fields = [(f, f.name.lower()) for f in fields if can_be_related(f, is_enum)]
 			related_field: Field = None
-			for field in fields:
-				if is_enum and field.enum is not None:
-					# The field shouldn't have an enum already defined
-					continue
-				if field.name in last or field.name in row0:
+			for (field, name) in compatible_fields:
+				if name in last or name in row0:
 					related_field = field
 					break
 			if related_field is None:  # Try harder
-				for field in fields:
-					if is_enum and field.enum is not None:
-						continue
-					if last in field.name:
+				for (field, name) in compatible_fields:
+					if last in name:
 						related_field = field
 						break
-
+			if related_field is None:  # Retry harder
+				l = last.replace(' ', "")
+				for (field, name) in compatible_fields:
+					# DEBUG print(f"{name}: {field.type} ?")
+					if l in field.type.lower():
+						related_field = field
+						break
+			if related_field is None and is_enum:
+				print(f"[WARNING] Last resort to find the related field. Compatible fields: {compatible_fields}")
+				for (field, name) in compatible_fields:
+					if "type" in name:
+						for header in row0:
+							if "type" in header:
+								related_field = field
+								break
+					elif "id" in name:
+						for header in row0:
+							if "id" in header:
+								related_field = field
+								break
 			# Parse the data
-			# Enum data -----------------------------
-			if is_enum:
+			# Attribute data ------------------------
+			if is_attr:
 				if related_field is None:
-					print(f"[ERROR] Enum-like table found without a corresponding field")
-					print(f"Fields: {[f.name for f in fields]}")
+					print(">" * 30)
+					print(f"[ERROR] Attributes-like table found without a corresponding field")
+					print(f"Last text: {last}")
+					print(f"Fields: {[(f.name, f.type) for f in fields]}")
 					print(f"Row0: {row0}")
 					print(f"Table: {elem}")
-					print("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+					print("<" * 30)
+				else:
+					key_col = attribute_columns[0]
+					def_col = attribute_columns[1]
+					min_col = attribute_columns[2]
+					max_col = attribute_columns[3]
+					lab_col = attribute_columns[4]
+					# Save the values as an enum with comments
+					enum = Enum(related_field)
+					for attr_row in elem.rows[1:]:
+						attr_key = get_text(attr_row[key_col])
+						attr_def = get_text(attr_row[def_col])
+						attr_min = get_text(attr_row[min_col])
+						attr_max = get_text(attr_row[max_col])
+						attr_lab = get_text(attr_row[lab_col])
+
+						entry_value = attr_key
+						entry_name = constname(entry_value)
+						entry_comment = f"{attr_lab}; default {attr_def}, min {attr_min}, max {attr_max}"
+						entry = EnumEntry(entry_value, entry_name, entry_comment)
+						enum.add_entry(entry)
+			# Enum data -----------------------------
+			elif is_enum:
+				if related_field is None:
+					print(">" * 30)
+					print(f"[ERROR] Enum-like table found without a corresponding field")
+					print(f"Last text: {last}")
+					print(f"Fields: {[(f.name, f.type) for f in fields]}")
+					print(f"Row0: {row0}")
+					print(f"Table: {elem}")
+					print("<" * 30)
 				else:
 					# >>>Search for the columns indexes<<<
 					if elem.column_count() == 1:
 						# Only one column => use it for the values and the names
 						values_col = names_col = 0
+						comments_col = None
 					else:
 						# Find which column contains the values
 						values_col = 0
@@ -299,13 +358,23 @@ def parse_below(p: PacketInfos):
 							if icol != values_col and (related_field.name.lower() == c or "name" in c):
 								names_col = icol
 								break
+						# Find which column contains the notes, defaults to names_col+1 or None
+						comments_col = names_col + 1
+						for icol, content in enumerate(row0):
+							c = content.lower()
+							if icol not in [values_col, names_col] and c == "notes":
+								comments_col = icol
+								break
 						# Prevent IndexError in case of a weird table
 						if names_col >= elem.column_count():
 							names_col = 0
+						if comments_col >= elem.column_count():
+							comments_col = None
 						# Avoid to create an invalid enum
 						first_name = row1[names_col]
 						if re.match("\\d+", first_name):
-							print(f"[ERROR] Invalid enum table: the name of the first entry, \"{first_name}\", begins with a digit")
+							print(
+								f"[ERROR] Invalid enum table: the name of the first entry, \"{first_name}\", begins with a digit")
 							continue
 					# >>>Parse the enum entries<<<
 					enum = Enum(related_field)
@@ -315,27 +384,40 @@ def parse_below(p: PacketInfos):
 						if not ((v.is_header and v.is_horizontal()) or v.is_left_ref()):
 							entry_value = get_text(entry_row[values_col])
 							entry_name = get_text(entry_row[names_col])
+							entry_comment = None if comments_col is None else get_text(entry_row[comments_col])
 							if entry_name is not None:
-								entry = parse_enum_entry(entry_value, entry_name)
-								enum.add_entry(entry)
+								parse_enum_entry(enum, entry_value, entry_name, entry_comment)
 			# Compound data -------------------------
-			else:  # Compound data
+			else:
 				names_col, types_col, notes_col = compound_columns
 				ctx = LocalContext(elem, names_col, types_col, notes_col)
 				if related_field is None:
-					print("f[ERROR] Compound-like table found without a corresponding field")
+					print(">" * 30)
+					print("[ERROR] Compound-like table found without a corresponding field")
+					print(f"Last text: {last}")
+					print(f"Fields: {[(f.name, f.type) for f in fields]}")
+					print(f"Row0: {row0}")
+					print(f"Table: {elem}")
+					print("<" * 30)
 				else:
-					compound_name = classname(related_field.name)
+					t = related_field.type
+					if '[' in t:
+						rep = {"Array[": "", "Option[": "", ']': ""}
+						compound_name = multireplace(t, rep)
+					else:
+						compound_name = classname(related_field.name)
 					compound = Compound(compound_name, related_field)
 					parse_compound(ctx, p, row=1, compound=compound, nrows=ctx.rowlimit - 1)
+					# Recreate the field list to include the fields of the new compound:
+					fields = sorted(p.all_fields, key=lambda f: len(f.name), reverse=True)
+			last = ""
 		# Enum data in list -------------------------
 		# (often used in the old protocol documentation)
 		elif isinstance(elem, HtmlList):  # Enum data in list
-			last = ""
 			# Find the related field
 			related_field: Field = None
-			for (name, field) in p.dict_fields.items():
-				if field.enum is None and name in last:
+			for field in p.all_fields:
+				if field.enum is None and field.name.lower() in last:
 					# The field shouldn't have an enum already defined
 					related_field = field
 					break
@@ -344,34 +426,64 @@ def parse_below(p: PacketInfos):
 				enum = Enum(related_field)
 				for li in elem.elements:
 					if isinstance(li, str):
-						entry = parse_enum_textentry(li)
-						if entry is not None:
-							enum.add_entry(entry)
+						parse_enum_textentry(enum, li)
+				if len(enum.entries) == 0:
+					print(f"[WARNING] Empty enum parsed (from a list) for {related_field}, it will be removed.")
+					related_field.enum = None
+			last = ""
 		else:
-			last = get_text(elem)
+			rep = {"structure:": "", "values:": "", ':': ""}
+			last = multireplace(get_text(elem).lower(), rep).strip()
+			# Fix for https://wiki.vg/Protocol#Player_List_Item
+			if last.startswith("<dinnerbone> it's a bitfield"):
+				last = "flags"
 
 
-def parse_enum_textentry(text: str):
+def parse_enum_textentry(enum: Enum, text: str):
 	parts = text.split(':', maxsplit=1)
-	if len(parts) < 2:
-		return None
-	return parse_enum_entry(parts[0], parts[1])
+	if len(parts) >= 2:
+		parse_enum_entry(enum, parts[0], parts[1])
 
 
-def parse_enum_entry(entry_value: str, entry_name: str):
+def parse_enum_entry(enum: Enum, entry_value: str, entry_name: str, entry_comments: str = None):
 	entry_value = entry_value.strip()
 	entry_name = entry_name.strip()
 	if '(' in entry_name:
 		parts = entry_name.split('(', 1)
-		entry_name = parts[0]
-		entry_comments = parts[1].replace(')', "", 1)
+		# Fix for https://wiki.vg/Protocol#Entity_Equipment slots
+		if ('–' in entry_value or '-' in entry_value) and (':' in parts[1]):
+			s = parts[1].split(':', 1)
+			entry_value = s[0]
+			entry_name = s[1]
+		else:
+			# Usual parentheses containing comments
+			entry_name = parts[0]
+			entry_comments = parts[1].replace(')', "", 1)
 	else:
 		entry_comments = None
-	if len(entry_name) > 20:
-		entry_comments = entry_name if entry_comments is None else entry_name + entry_comments
-		entry_name = entry_name[:20]
+	if len(entry_name) > 27:
+		# Fix for https://wiki.vg/Protocol#Entity_Effect flags
+		if "- " in entry_name:
+			s = entry_name.split("- ", 1)
+			entry_name = s[0]
+			entry_comments = s[1].strip()
+		# Fix for https://wiki.vg/Protocol#Client_Settings chat mode
+		elif ". " in entry_name:
+			s = entry_name.split(". ", 1)
+			entry_name = s[0]
+			entry_comments = s[1].strip()
+		else:
+			entry_comments = entry_name if entry_comments is None else entry_name + entry_comments
+			entry_name = entry_name[:27]
+	elif len(entry_name) == 0:
+		if entry_comments:
+			entry_name = entry_comments.replace('?', "")
+		else:
+			entry_name = "_" + entry_value
+
 	entry_name = constname(entry_name)
-	return EnumEntry(entry_value, entry_name, entry_comments)
+	entry = EnumEntry(entry_value, entry_name, entry_comments)
+	enum.add_entry(entry)
 
 
 def find_compound_columns(table: HtmlTable):
@@ -398,3 +510,33 @@ def find_compound_columns(table: HtmlTable):
 	if names_col is None and types_col is None:  # names_col and types_col are None
 		return None
 	return names_col, types_col, notes_col  # names_col and types_col aren't None
+
+
+def find_attribute_columns(table: HtmlTable):
+	if table.column_count() != 5:
+		return None
+	r = [get_text(cell).lower() for cell in table.rows[0]]
+	if r == ["key", "default", "min", "max", "label"]:
+		return 0, 1, 2, 3, 4
+	else:
+		return None
+
+
+def extract_type_and_length(field_type: str):
+	if "String" in field_type and '(' in field_type:
+		ltyp = []
+		lmax = []
+		p = False
+		for ch in field_type:
+			if ch == '(':
+				p = True
+			elif ch == ')':
+				p = False
+			elif p:
+				lmax.append(ch)
+			else:
+				ltyp.append(ch)
+		type = "".join(ltyp)
+		max = int("".join(lmax))
+		return type, max
+	return field_type, None

@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from utils.html_tools import *
 from utils.string_tools import *
@@ -6,23 +6,29 @@ from utils.string_tools import *
 
 class Field:
 	"""A field"""
+	name: str
+	type: str
+	comment: str
+	max_length: Optional[int]
 
-	def __init__(self, name: str, type: str, comment: str):
+	def __init__(self, name: str, type: str, comment: str, max_length: Optional[int] = None):
 		# DEBUG print("Field: %s:%s, %s:%s, %s;%s" % (name_str, type(name_str), type_str, type(type_str), comment, type(comment)))
 		self.name = name
 		self.type = type
 		self.comment = comment
+		self.max_length = max_length
 		# Additional fields
 		self.enum = None
 		self.switch = None
 		self.compound = None
 
 	def __repr__(self):
-		comment = "" if self.comment is None else f" // {self.comment}"
-		return f"Field({self.name}: {self.type}{comment})"
+		return str(self)
 
 	def __str__(self):
-		return f"Field({self.name}: {self.type})"
+		comment = "" if self.comment is None else f" // {self.comment}"
+		maxlen = "" if self.max_length is None else f" (length <= {self.max_length})"
+		return f"Field({self.name}: {self.type}{maxlen}{comment})"
 
 
 class Compound:
@@ -144,9 +150,10 @@ class PacketInfos:
 	section: HtmlSection
 	main_table: HtmlTable
 	below_main: List[Any]
-	main_compound: Compound  # not registered in dict_compounds
+	main_compound: Compound
 	main_id: int
-	dict_fields: Dict[str, Field]  # contains also the sub-fields
+	dict_fields: Dict[str, Field]
+	all_fields: List[Field]  # contains all the fields we've found
 
 	def __init__(self, section: HtmlSection):
 		self.section = section
@@ -157,9 +164,11 @@ class PacketInfos:
 		self.below_main = section.content[i + 1:]
 		self.main_compound = Compound(classname(section.title))
 		self.main_id = int(get_text(t.get(1, 0)), base=0)  # second row first column
+		self.all_fields = []
 		self.dict_fields = {}
 
 	def register_field(self, field: Field):
+		self.all_fields.append(field)
 		self.dict_fields[field.name.lower()] = field
 
 
@@ -194,7 +203,11 @@ def str_compound_entries(l, c: Compound, level=0):
 		if isinstance(entry, Switch):
 			str_switch(l, entry, level)
 		elif isinstance(entry, Field):
-			indent(l, f"Field {entry.name}: {entry.type}", level)
+			comment = "" if entry.comment is None else f" // {entry.comment}"
+			maxlen = "" if entry.max_length is None else f" (length <= {entry.max_length})"
+			indent(l, f"Field {entry.name}: {entry.type}{maxlen}{comment}", level)
+			if entry.compound is not None:
+				str_compound(l, entry.compound, level + 1)
 			if entry.enum is not None:
 				str_enum(l, entry.enum, level + 1)
 		else:
@@ -202,7 +215,7 @@ def str_compound_entries(l, c: Compound, level=0):
 
 
 def str_compound(l, c: Compound, level=0, newline=True):
-	fo = "" if c.field is None else f"for {c.field}"
+	fo = "" if c.field is None else f" for {c.field}"
 	indent(l, f"Compound {c.name}{fo}", level, newline)
 	str_compound_entries(l, c, level + 1)
 

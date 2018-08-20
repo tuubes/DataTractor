@@ -14,43 +14,48 @@ def pascal_case(snake_str: str) -> str:
 
 
 def snake_case(s: str) -> str:
-	return s.lower().replace(" ", "_")
+	return s.lower().replace(' ', '_')
+
+
+def valid_field_name(name: str):
+	low = name.strip().lower()
+	if low == "type":
+		return "typ"
+	else:
+		if low[0].isdigit():
+			low = "_" + low
+		rep = {'/': '_', '-': "minus", '+': "plus", '.': '_', ')': "", ':': "", '–': "", ' ': '_'}
+		return multireplace(low, rep)
 
 
 def varname(name: str):
-	low = name.lower()
-	if low == "type":
-		return "typ"
-	else:
-		rep = {"/": "_", "-": "minus", "+": "plus", ".": "", ")": "", " ": "_"}
-		return camel_case(multireplace(low, rep))
-
-
-def classname(name: str):
-	rep = {"/": "_", "-": "", "+": "", ".": "", " ": "_"}
-	return pascal_case(multireplace(re.sub("\(.*?\)", "", name.lower()), rep))
+	return camel_case(valid_field_name(name))
 
 
 def constname(name: str):
-	low = name.lower()
-	if low == "type":
-		return "typ"
-	else:
-		rep = {"/": "_", "-": "minus", "+": "plus", ".": "", ")": "", " ": "_"}
-		return multireplace(low, rep).upper()
+	return valid_field_name(name).upper()
+
+
+def classname(name: str):
+	rep = {'/': '_', '-': "", '+': "", '.': "", ':': "", ' ': '_'}
+	return pascal_case(multireplace(re.sub("\(.*?\)", "", name.lower()), rep))
 
 
 def __type(name: str):
-	name = name.replace('_', "")
 	if name.startswith("array_of") or name.startswith("optional"):
 		return name
 	else:
-		return first_up(name)
+		if ',' in name:
+			name = name.split(',', maxsplit=1)[0]
+		if name[-1] == '_':
+			name = name[:-1]
+		return pascal_case(name)
 
 
 def typename(name: str):
-	rep = {"_enum": "", "enum": "", "/": "_", "-": "", ".": "", "+": "", " ": "_"}
+	rep = {"_enum": "", "enum": "", '/': '_', '-': "", '.': "", '+': "", ':': "", ' ': '_'}
 	res = multireplace(name.lower(), rep)
+	res = re.sub(r"array_of(.+)s", lambda m: f"Array[{__type(m.group(1))}]", res)  # remove the plural
 	res = re.sub(r"array_of(.+)", lambda m: f"Array[{__type(m.group(1))}]", res)
 	res = re.sub(r"optional(.+)", lambda m: f"Option[{__type(m.group(1))}]", res)
 	res = re.sub(r"(.+)array", lambda m: f"Array[{__type(m.group(1))}]", res)
@@ -63,9 +68,9 @@ def first_up(s: str):
 
 def plural(noun: str):
 	last = noun[-1]
-	if last == "y":
+	if last == 'y':
 		return noun[:-1] + "ies"
-	elif last == "h":
+	elif last == 'h':
 		return noun[:-1] + "es"
 	else:
 		return noun + "s"
