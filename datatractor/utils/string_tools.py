@@ -22,12 +22,12 @@ def varname(name: str):
 	if low == "type":
 		return "typ"
 	else:
-		rep = {"/": "_", "-": "minus", "+": "plus", " ": "_"}
+		rep = {"/": "_", "-": "minus", "+": "plus", ".": "", ")": "", " ": "_"}
 		return camel_case(multireplace(low, rep))
 
 
 def classname(name: str):
-	rep = {"/": "_", "-": "", "+": "", " ": "_"}
+	rep = {"/": "_", "-": "", "+": "", ".": "", " ": "_"}
 	return pascal_case(multireplace(re.sub("\(.*?\)", "", name.lower()), rep))
 
 
@@ -36,7 +36,7 @@ def constname(name: str):
 	if low == "type":
 		return "typ"
 	else:
-		rep = {"/": "_", "-": "minus", "+": "plus", " ": "_"}
+		rep = {"/": "_", "-": "minus", "+": "plus", ".": "", ")": "", " ": "_"}
 		return multireplace(low, rep).upper()
 
 
@@ -49,7 +49,7 @@ def __type(name: str):
 
 
 def typename(name: str):
-	rep = {"_enum": "", "enum": "", "/": "_", "-": "", "+": "", " ": "_"}
+	rep = {"_enum": "", "enum": "", "/": "_", "-": "", ".": "", "+": "", " ": "_"}
 	res = multireplace(name.lower(), rep)
 	res = re.sub(r"array_of(.+)", lambda m: f"Array[{__type(m.group(1))}]", res)
 	res = re.sub(r"optional(.+)", lambda m: f"Option[{__type(m.group(1))}]", res)
