@@ -117,7 +117,12 @@ def parse_compound(ctx: LocalContext, p: PacketInfos, row, compound, nrows):
 			continue
 		type_cell = ctx.table[i][ctx.types_col]
 		notes_cell = ctx.table[i][ctx.notes_col]
-		field_name = get_text(name_cell).lower()
+		field_name = get_text(name_cell)
+		if field_name is None:
+			# Fix for packets that have no field and don't state "no fields" clearly
+			i += 1
+			continue
+		field_name = field_name.lower()
 		field_type = get_text(type_cell)
 		field_type = "" if field_type is None else field_type.lower()
 		field_notes = get_text(notes_cell)
