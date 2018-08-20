@@ -204,14 +204,14 @@ def str_compound_entries(l, c: Compound, level=0):
 def str_compound(l, c: Compound, level=0, newline=True):
 	fo = "" if c.field is None else f"for {c.field}"
 	indent(l, f"Compound {c.name}{fo}", level, newline)
-	str_compound_entries(l, c, level)
+	str_compound_entries(l, c, level + 1)
 
 
 def str_switch(l, s: Switch, level=0):
 	indent(l, f"Switch {s.name} over {s.field}", level)
 	for entry in s.entries:
 		indent(l, f"{entry.value} => {entry.name}", level + 1)
-		str_compound_entries(l, entry, level)
+		str_compound_entries(l, entry, level + 2)
 
 
 def str_enum(l, e: Enum, level=0):
