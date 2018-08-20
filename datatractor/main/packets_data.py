@@ -1,4 +1,4 @@
-from typing import Any, Dict, Set
+from typing import Any, Dict
 
 from utils.html_tools import *
 from utils.string_tools import *
@@ -18,10 +18,11 @@ class Field:
 		self.compound = None
 
 	def __repr__(self):
-		return "Field(%s: %s // %s)" % (self.name, self.type, self.comment)
+		comment = "" if self.comment is None else f" // {self.comment}"
+		return f"Field({self.name}: {self.type}{comment})"
 
 	def __str__(self):
-		return "Field(%s: %s)" % (self.name, self.type)
+		return f"Field({self.name}: {self.type})"
 
 
 class Compound:
@@ -30,6 +31,7 @@ class Compound:
 	def __init__(self, name, field=None):
 		self.name = name
 		self.entries = []
+		self.field = field
 		if field is not None:
 			field.compound = self
 
@@ -50,6 +52,9 @@ class SwitchEntry(Compound):
 		super().__init__(name)
 		self.value = value
 
+	def __str__(self):
+		return f"SwitchEntry({self.value} => {self.name})"
+
 
 class Switch:
 	"""The data changes depending on another field, which should be an enum"""
@@ -59,17 +64,25 @@ class Switch:
 		self.field = field
 		field.switch = self
 		self.entries = []
-		self.name = field.name.title()
+		self.name = first_up(field.name)
 
 	def add_entry(self, entry: SwitchEntry):
 		self.entries.append(entry)
 
 
+	def __str__(self):
+		return f"Switch{self.entries}"
+
+
 class EnumEntry:
-	def __init__(self, value, name, comments=None):
+	def __init__(self, value, name, comment=None):
 		self.value = value
 		self.name = name
-		self.comments = comments
+		self.comment = comment
+
+	def __str__(self):
+		return f"EnumEntry({self.name} = {self.value})"
+
 
 class Enum:
 	"""A field with a limited number of values, usually integers"""
@@ -79,7 +92,7 @@ class Enum:
 		self.field = field
 		field.enum = self
 		self.entries = []
-		self.name = field.name.title()
+		self.name = first_up(field.name)
 
 	def add_entry(self, entry: EnumEntry):
 		self.entries.append(entry)
@@ -131,44 +144,23 @@ class PacketInfos:
 	section: HtmlSection
 	main_table: HtmlTable
 	below_main: List[Any]
-	main_compound: Compound # not registered in dict_compounds
+	main_compound: Compound  # not registered in dict_compounds
 	main_id: int
-	dict_fields: Dict[str, Field] # contains also the sub-fields
-	dict_switches: Dict[str, Switch] # contains also the sub-switches
-	dict_compounds: Dict[str, Compound] # contains also the sub-compound
-	dict_enums: Dict[str, Enum] # contains also the sub-enums
-	set_used_types: Set[str] # contains all the used types
+	dict_fields: Dict[str, Field]  # contains also the sub-fields
 
 	def __init__(self, section: HtmlSection):
 		self.section = section
+		t: HtmlTable
+		i: int
 		t, i = section.find_i(lambda x: isinstance(x, HtmlTable))
 		self.main_table = t
 		self.below_main = section.content[i + 1:]
 		self.main_compound = Compound(classname(section.title))
-		self.main_id = int(t.get(1, 0), base=0) # second row first column
+		self.main_id = int(get_text(t.get(1, 0)), base=0)  # second row first column
 		self.dict_fields = {}
-		self.dict_switches = {}
-		self.dict_compounds = {}
-		self.dict_enums = {}
-		self.set_used_types = {}
 
-	def register_field(self, field):
-		self.dict_fields[field.name] = field
-		self.register_used_type(field.type)
-
-	def register_switch(self, switch):
-		self.dict_switches[switch.name] = switch
-
-	def register_compound(self, compound):
-		self.dict_compounds[compound.name] = compound
-
-	def register_enum(self, enum):
-		self.dict_enums[enum.name] = enum
-
-	def register_used_type(self, type: str):
-		if '[' in type:
-			type = type[:type.index('[')]
-		self.set_used_types.add(type)
+	def register_field(self, field: Field):
+		self.dict_fields[field.name.lower()] = field
 
 
 class LocalContext:
@@ -181,9 +173,49 @@ class LocalContext:
 	rowlimit: int
 	table: List[List[HtmlCell]]
 
-	def __init__(self, table, names_col, types_col, notes_col):
+	def __init__(self, table: HtmlTable, names_col, types_col, notes_col):
 		self.table = table.rows
-		self.rowlimit = len(table)
+		self.rowlimit = table.row_count()
 		self.names_col = 0 if names_col is None else names_col
 		self.types_col = self.names_col + 1 if types_col is None else types_col
-		self.notes_col = len(table[0]) - 1 if notes_col is None else notes_col
+		self.notes_col = table.column_count() - 1 if notes_col is None else notes_col
+
+
+def indent(l: list, s: str, level: int, newline=True):
+	if newline:
+		prefix = "\n" + ("|  " * level)
+	else:
+		prefix = "  " * level
+	l.append(f"{prefix}{s}")
+
+
+def str_compound_entries(l, c: Compound, level=0):
+	for entry in c.entries:
+		if isinstance(entry, Switch):
+			str_switch(l, entry, level)
+		elif isinstance(entry, Field):
+			indent(l, f"Field {entry.name}: {entry.type}", level)
+			if entry.enum is not None:
+				str_enum(l, entry.enum, level + 1)
+		else:
+			indent(l, f"[UNKNOWN] {str(entry)}", level)
+
+
+def str_compound(l, c: Compound, level=0, newline=True):
+	fo = "" if c.field is None else f"for {c.field}"
+	indent(l, f"Compound {c.name}{fo}", level, newline)
+	str_compound_entries(l, c, level)
+
+
+def str_switch(l, s: Switch, level=0):
+	indent(l, f"Switch {s.name} over {s.field}", level)
+	for entry in s.entries:
+		indent(l, f"{entry.value} => {entry.name}", level + 1)
+		str_compound_entries(l, entry, level)
+
+
+def str_enum(l, e: Enum, level=0):
+	indent(l, f"Enum {e.name}", level)
+	for entry in e.entries:
+		comment = "" if entry.comment is None else f" // {entry.comment}"
+		indent(l, f"{entry.name} = {entry.value}{comment}", level + 1)

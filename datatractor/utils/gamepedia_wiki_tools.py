@@ -1,5 +1,8 @@
 import re
 from datetime import date, datetime
+from typing import Any, Union
+
+from bs4 import Tag
 
 from datatractor.utils.html_tools import *
 from datatractor.utils.http_tools import *
@@ -48,12 +51,13 @@ def extract_release_infos(game_version: str, major_only: bool):
 	next_version = None
 	next_date = date.today()
 	date_format = "%B %d, %Y"
+	table: HtmlTable
 	for table in root.recursive_findall(lambda e: isinstance(e, HtmlTable)):
-		if table.column_count() == 2 and table.get(0, 0) == "Version":
+		if table.column_count() == 2 and get_text(table.get(0, 0)) == "Version":
 			if major_only:
-				rows = table.row_count[table.row_count() - 1:]
+				rows = table.rows[table.row_count() - 1:]
 			else:
-				rows = table.row_count[1:]  # skips header
+				rows = table.rows[1:]  # skips header
 			for row in rows:
 				version = re.sub("\(.*?\)", "", get_text(row[0])).strip()
 				if major_only:

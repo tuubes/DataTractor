@@ -1,4 +1,4 @@
-from datatractor.main.packets_extractor import Packet
+from datatractor.main.packets_extractor import PacketInfos
 from datatractor.utils.string_tools import *
 
 
@@ -162,7 +162,7 @@ todo_count = 0
 unhandled_type_count = 0
 
 
-def generate_packet_class(p: Packet, package: str) -> (str, str):
+def generate_packet_class(p: PacketInfos, package: str) -> (str, str):
 	"""
 	Generates scala classes from packet data.
 	:param p: the packet

@@ -139,10 +139,9 @@ def parse_list(list: Tag, trim: bool):
 	"""Parses a <ol></ol> or <ul></ul> and produces an HtmlList."""
 	elements = []
 	ordered = (list.name == "ol")
-	e: Tag
 	for e in list.find_all("li"):
 		inside = e.contents
-		if isinstance(inside, list) and len(inside) == 1:
+		if isinstance(inside, List) and len(inside) == 1:
 			inside = inside[0]
 		if isinstance(inside, Tag):
 			if inside.name in ["ol", "ul"]:
@@ -183,9 +182,9 @@ def parse_table(table: Tag, trim: bool):
 	# Then we can fill the arrays with the cells' content
 	tr: Tag
 	td: Tag
-	i: int = 0 # row index
+	i: int = 0  # row index
 	for tr in table.find_all("tr"):
-		j: int = 0 # column index
+		j: int = 0  # column index
 		for td in tr.find_all(["th", "td"]):
 			# Skips already populated cells, eg by rowspan or colspan
 			while (j < col_count) and (rows[i][j] is not None):
@@ -214,8 +213,8 @@ def parse_table(table: Tag, trim: bool):
 			# Populates the cell(s) and respects rowspan and colspan if present
 			ispan = int(td["rowspan"]) if td.has_attr("rowspan") else 1
 			jspan = int(td["colspan"]) if td.has_attr("colspan") else 1
-			ispan = max(ispan, 1) # fix values <= 0
-			jspan = max(jspan, 1) # fix values <= 0
+			ispan = max(ispan, 1)  # fix values <= 0
+			jspan = max(jspan, 1)  # fix values <= 0
 			if ispan == jspan == 1:
 				rows[i][j] = HtmlCell(cell_content, is_header)
 			else:
@@ -354,6 +353,7 @@ class HtmlSection:
 
 class HtmlCell:
 	"""A cell in a table"""
+
 	def __init__(self, content, is_header):
 		self.content = content
 		self.is_header = is_header
@@ -387,11 +387,13 @@ class HtmlCell:
 	def is_empty(self) -> bool:
 		return self.content is None
 
+
 class BigCell(HtmlCell):
 	"""
 	A cell that lies in several rows and/or columns.
 	The BigCell is stored in its first table cell, the other occupied cells are filled with RefCells.
 	"""
+
 	def __init__(self, content, is_header, rowspan, colspan):
 		super().__init__(content, is_header)
 		self.rowspan = rowspan
@@ -411,8 +413,10 @@ class BigCell(HtmlCell):
 	def row_count(self):
 		return self.rowspan
 
+
 class RefCell(HtmlCell):
 	"""Reference to a BigCell"""
+
 	def __init__(self, ref: BigCell):
 		super().__init__(ref.content, ref.is_header)
 		self.ref = ref
@@ -435,19 +439,20 @@ class RefCell(HtmlCell):
 		return str(self)
 
 	def is_up_ref(self):
-		return self.ref.row_count() > 1 # ref cell is vertical
+		return self.ref.row_count() > 1  # ref cell is vertical
 
 	def is_left_ref(self):
-		return self.ref.column_count() > 1 # ref cell is horizontal
+		return self.ref.column_count() > 1  # ref cell is horizontal
 
 
 class HtmlTable:
 	"""Represents an HTML table"""
+
 	def __init__(self, rows: List[List[HtmlCell]]):
 		self.rows = rows
 
 	def __str__(self):
-		return pretty_matrix_str(self.rows)
+		return f"HtmlTable {self.row_count()}x{self.column_count()} \n{pretty_matrix_str(self.rows)}"
 
 	def __repr__(self):
 		return str(self)
@@ -504,6 +509,7 @@ class HtmlTable:
 
 class HtmlList:
 	"""Represents an HTML list, ordered or unordered"""
+
 	def __init__(self, elements: list, ordered: bool):
 		self.elements = elements
 		self.is_ordered = ordered

@@ -4,13 +4,13 @@ import re
 def camel_case(snake_str: str) -> str:
 	# Converts snake_case to camelCase by capitalizing the first letter of each part except the first one
 	parts = snake_str.split('_')
-	return parts[0] + ''.join(x.title() for x in parts[1:])
+	return parts[0] + ''.join(first_up(x) for x in parts[1:])
 
 
 def pascal_case(snake_str: str) -> str:
 	# Converts snake_case to PascalCase by capitalizing the first letter of each part
 	parts = snake_str.split('_')
-	return ''.join(x.title() for x in parts)
+	return ''.join(first_up(x) for x in parts)
 
 
 def snake_case(s: str) -> str:
@@ -18,27 +18,47 @@ def snake_case(s: str) -> str:
 
 
 def varname(name: str):
-	rep = {"/": "_or_", "-": "minus", "+": "plus", "type": "typ", " ": "_"}
-	return camel_case(multireplace(name.lower(), rep))
+	low = name.lower()
+	if low == "type":
+		return "typ"
+	else:
+		rep = {"/": "_", "-": "minus", "+": "plus", " ": "_"}
+		return camel_case(multireplace(low, rep))
 
 
 def classname(name: str):
-	rep = {"/": "_or_", "-": "", "+": "", " ": "_"}
+	rep = {"/": "_", "-": "", "+": "", " ": "_"}
 	return pascal_case(multireplace(re.sub("\(.*?\)", "", name.lower()), rep))
 
 
 def constname(name: str):
-	rep = {"/": "_or_", "-": "minus", "+": "plus", "type": "typ", " ": "_"}
-	return multireplace(name.lower(), rep).upper()
+	low = name.lower()
+	if low == "type":
+		return "typ"
+	else:
+		rep = {"/": "_", "-": "minus", "+": "plus", " ": "_"}
+		return multireplace(low, rep).upper()
+
+
+def __type(name: str):
+	name = name.replace('_', "")
+	if name.startswith("array_of") or name.startswith("optional"):
+		return name
+	else:
+		return first_up(name)
 
 
 def typename(name: str):
-	rep = {"_enum": "", "enum": "", "/": "_or_", "-": "", "+": "", " ": "_"}
+	rep = {"_enum": "", "enum": "", "/": "_", "-": "", "+": "", " ": "_"}
 	res = multireplace(name.lower(), rep)
-	res = re.sub(r"array_of(.+)", r"Array[\1]", res)
-	res = re.sub(r"optional(.+)", r"Option[\1]", res)
-	res = re.sub(r"(.+)array", r"Array[\1]", res)
+	res = re.sub(r"array_of(.+)", lambda m: f"Array[{__type(m.group(1))}]", res)
+	res = re.sub(r"optional(.+)", lambda m: f"Option[{__type(m.group(1))}]", res)
+	res = re.sub(r"(.+)array", lambda m: f"Array[{__type(m.group(1))}]", res)
 	return pascal_case(res.strip())
+
+
+def first_up(s: str):
+	return s[:1].upper() + s[1:]
 
 
 def plural(noun: str):
