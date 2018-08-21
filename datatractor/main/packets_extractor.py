@@ -284,7 +284,10 @@ def parse_compound(ctx: LocalContext, p: PacketInfos, row, compound, nrows):
 
 
 def can_give_length(field: Field):
-	return field.type in ["Varint", "Int", "Short", "Byte"]
+	t = field.type
+	if t.startswith("Option["):
+		t = multireplace(t, {"Option[": "", ']': ""})
+	return t in ["Varint", "Int", "Short", "Byte"]
 
 
 def hint_give_length(field: Field, to: Field):
@@ -292,7 +295,7 @@ def hint_give_length(field: Field, to: Field):
 
 
 def is_array(field: Field):
-	return field.type.startswith("Array") or field.type.startswith("Optional[Array")
+	return field.type.startswith("Array") or field.type.startswith("Option[Array")
 
 
 def can_be_related(field: Field, is_enum: bool):
