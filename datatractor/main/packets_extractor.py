@@ -465,10 +465,15 @@ def parse_enum_entry(enum: Enum, entry_value: str, entry_name: str, entry_commen
 			entry_comments = parts[1].replace(')', "", 1)
 	else:
 		entry_comments = None
-	if len(entry_name) > 27:
+	if len(entry_name) > 29:
 		# Fix for https://wiki.vg/Protocol#Entity_Effect flags
 		if "- " in entry_name:
 			s = entry_name.split("- ", 1)
+			entry_name = s[0]
+			entry_comments = s[1].strip()
+		# Fix for https://wiki.vg/Protocol#Update_Block_Entity
+		elif ", " in entry_name:
+			s = entry_name.split(", ", 1)
 			entry_name = s[0]
 			entry_comments = s[1].strip()
 		# Fix for https://wiki.vg/Protocol#Client_Settings chat mode
@@ -477,8 +482,13 @@ def parse_enum_entry(enum: Enum, entry_value: str, entry_name: str, entry_commen
 			entry_name = s[0]
 			entry_comments = s[1].strip()
 		else:
+			# Fix for https://wiki.vg/Protocol#Window_Property
+			rep = {"the ": "", "of ": "",
+				   "shown on mouse hover over ": "", "requirement for ": "", "enchantment slot": "slot",
+				   "Play elder guardian mob appearance effect and sound": "elder guardian appearance"}
+			short_name = multireplace(entry_name, rep)
 			entry_comments = entry_name if entry_comments is None else entry_name + entry_comments
-			entry_name = entry_name[:27]
+			entry_name = short_name[:29]
 	elif len(entry_name) == 0:
 		if entry_comments:
 			entry_name = entry_comments.replace('?', "")

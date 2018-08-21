@@ -24,7 +24,7 @@ def valid_field_name(name: str):
 	else:
 		if low[0].isdigit():
 			low = "_" + low
-		rep = {'/': '_', '-': "minus", '+': "plus", '.': '_', ')': "", ':': "", '–': "", ' ': '_'}
+		rep = {'/': '_', '-': "minus", '+': "plus", '.': '_', ')': "", ':': "_", '–': "", ' ': '_'}
 		return multireplace(low, rep)
 
 
@@ -46,7 +46,11 @@ def __type(name: str):
 		return name
 	else:
 		if ',' in name:
-			name = name.split(',', maxsplit=1)[0]
+			s = name.split(',', maxsplit=1)
+			if len(s[0]) == 0:
+				name = s[1]
+			else:
+				name = s[0]
 		if name[-1] == '_':
 			name = name[:-1]
 		return pascal_case(name)
