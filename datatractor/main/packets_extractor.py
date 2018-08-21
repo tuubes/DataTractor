@@ -431,8 +431,15 @@ def parse_below(p: PacketInfos):
 						# Prevent IndexError in case of a weird table
 						if names_col >= elem.column_count():
 							names_col = 0
-						if comments_col >= elem.column_count():
-							comments_col = None
+						if (comments_col is not None) and (comments_col >= elem.column_count()):
+							# Try to use the third column for the comments
+							if elem.column_count() >= 3:
+								for i in range(0, elem.column_count()):
+									if i != values_col and i != names_col:
+										comments_col = i
+							# There is no third column => there are no comments
+							else:
+								comments_col = None
 						# Avoid to create an invalid enum
 						first_name = row1[names_col]
 						if re.match("\\d+", first_name):
@@ -528,25 +535,29 @@ def parse_enum_entry(enum: Enum, entry_value: str, entry_name: str, entry_commen
 		else:
 			# Usual parentheses containing comments
 			entry_name = parts[0]
-			entry_comments = parts[1].replace(')', "", 1)
-	else:
-		entry_comments = None
+			if entry_comments is not None:
+				entry_comments = entry_comments + parts[1].replace(')', "", 1)
+			else:
+				entry_comments = parts[1].replace(')', "", 1)
 	if len(entry_name) > 29:
 		# Fix for https://wiki.vg/Protocol#Entity_Effect flags
 		if "- " in entry_name:
 			s = entry_name.split("- ", 1)
+			c = s[1].strip()
 			entry_name = s[0]
-			entry_comments = s[1].strip()
+			entry_comments = c if entry_comments is None else entry_comments + c
 		# Fix for https://wiki.vg/Protocol#Update_Block_Entity
 		elif ", " in entry_name:
 			s = entry_name.split(", ", 1)
+			c = s[1].strip()
 			entry_name = s[0]
-			entry_comments = s[1].strip()
+			entry_comments = c if entry_comments is None else entry_comments + c
 		# Fix for https://wiki.vg/Protocol#Client_Settings chat mode
 		elif ". " in entry_name:
 			s = entry_name.split(". ", 1)
+			c = s[1].strip()
 			entry_name = s[0]
-			entry_comments = s[1].strip()
+			entry_comments = c if entry_comments is None else entry_comments + c
 		else:
 			# Fix for https://wiki.vg/Protocol#Window_Property
 			rep = {"the ": "", "of ": "",
