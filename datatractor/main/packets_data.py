@@ -9,14 +9,16 @@ class Field:
 	name: str
 	type: str
 	comment: str
-	max_length: Optional[int]
+	string_max_length: Optional[int]
+	length_given_by: Optional  # Optional[Field]
 
-	def __init__(self, name: str, type: str, comment: str, max_length: Optional[int] = None):
+	def __init__(self, name: str, type: str, comment: str, string_max_length: Optional[int] = None):
 		# DEBUG print("Field: %s:%s, %s:%s, %s;%s" % (name_str, type(name_str), type_str, type(type_str), comment, type(comment)))
 		self.name = name
 		self.type = type
 		self.comment = comment
-		self.max_length = max_length
+		self.string_max_length = string_max_length
+		self.length_given_by = None
 		# Additional fields
 		self.enum = None
 		self.switch = None
@@ -27,8 +29,9 @@ class Field:
 
 	def __str__(self):
 		comment = "" if self.comment is None else f" // {self.comment}"
-		maxlen = "" if self.max_length is None else f" (length <= {self.max_length})"
-		return f"Field({self.name}: {self.type}{maxlen}{comment})"
+		maxlen = "" if self.string_max_length is None else f" (length <= {self.string_max_length})"
+		lengiv = "" if self.length_given_by is None else f" (length given by {self.length_given_by.type} {self.length_given_by.name})"
+		return f"Field({self.name}: {self.type}{maxlen}{lengiv}{comment})"
 
 	def json(self):
 		return f'{{' \
@@ -36,7 +39,8 @@ class Field:
 			   f'"name": "{self.name}",' \
 			   f'"type": "{self.type}",' \
 			   f'"comment": "{self.comment}",' \
-			   f'"maxLength": {jsonize(self.max_length)},' \
+			   f'"stringMaxLength": {jsonize(self.string_max_length)},' \
+			   f'"lengthGivenBy": {"null" if self.length_given_by is None else jsonize(self.length_given_by.name)}' \
 			   f'"enum": {jsonize(self.enum)},' \
 			   f'"switch": {jsonize(self.switch)},' \
 			   f'"compound": {jsonize(self.compound)}' \
@@ -280,9 +284,9 @@ def str_compound_entries(l, c: Compound, level=0):
 		if isinstance(entry, Switch):
 			str_switch(l, entry, level)
 		elif isinstance(entry, Field):
-			comment = "" if entry.comment is None else f" // {entry.comment}"
-			maxlen = "" if entry.max_length is None else f" (length <= {entry.max_length})"
-			indent(l, f"Field {entry.name}: {entry.type}{maxlen}{comment}", level)
+			maxlen = "" if entry.string_max_length is None else f" (length <= {entry.string_max_length})"
+			lengiv = "" if entry.length_given_by is None else f" (length given by {entry.length_given_by.type} {entry.length_given_by.name})"
+			indent(l, f"Field {entry.name}: {entry.type}{maxlen}{lengiv}", level)
 			if entry.compound is not None:
 				str_compound(l, entry.compound, level + 1)
 			if entry.enum is not None:

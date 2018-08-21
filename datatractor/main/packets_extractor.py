@@ -105,10 +105,15 @@ def parse_compound(ctx: LocalContext, p: PacketInfos, row, compound, nrows):
 	end = row + nrows
 	assert end <= ctx.rowlimit, f"Invalid end {end} = {row} + {nrows} for compound {compound}"
 
+	length_field_force = 0  # when 0, length_field expires and is set to None
+	length_field = None
 	switch_field = None
 	current_switch = None
 	i = row
 	while i < end:
+		length_field_force = max(0, length_field_force - 1)
+		if length_field_force == 0:
+			length_field = None
 		name_cell = ctx.table[i][ctx.names_col]
 		if name_cell is None:
 			# Fix for the packet https://wiki.vg/Protocol#Unlock_Recipes,
@@ -130,7 +135,7 @@ def parse_compound(ctx: LocalContext, p: PacketInfos, row, compound, nrows):
 		field_type = get_text(type_cell)
 		field_type = "" if field_type is None else field_type.lower()
 		field_notes = get_text(notes_cell)
-		# Switch entry --------------------------------------
+		# Switch entry ------------------------------------------
 		# The switch is detected before the "no field" condition, otherwise we miss a few switch entries
 		if re.fullmatch("\\d+\\s*:.+", low_field_name):
 			if current_switch is None:  # new switch
@@ -149,6 +154,7 @@ def parse_compound(ctx: LocalContext, p: PacketInfos, row, compound, nrows):
 				i = parse_compound(ctx, p, row=i, compound=s, nrows=name_cell.row_count())
 				i -= 1  # reverse the 'i += 1' made by parse_compound, we'll do it after the condition 'if not...'
 				ctx.names_col -= 1  # back to the current column
+		# -------------------------------------------------------
 		# No more processing of this row if there's no field
 		elif not low_field_name.startswith("no field") and not field_type.startswith("no field"):
 			field_name = varname(low_field_name)
@@ -178,6 +184,13 @@ def parse_compound(ctx: LocalContext, p: PacketInfos, row, compound, nrows):
 				p.register_field(field)
 				switch_field = field
 
+				# Defines the array's length
+				if length_field_force == 2 or (length_field_force == 1 and hint_give_length(length_field, field)):
+					field.length_given_by = length_field
+					length_field_force = 0
+					if length_field.name in ["length", "count", "size"]:  # ambiguous short name and maybe duplicated
+						length_field.name = f"{field.name}Length"  # meaningful and unique name
+
 				# Parse the compound structure
 				compound_nested = Compound(compound_name, field)
 				ctx.names_col += 1  # move right
@@ -193,6 +206,16 @@ def parse_compound(ctx: LocalContext, p: PacketInfos, row, compound, nrows):
 				compound.add_field(field)
 				p.register_field(field)
 				switch_field = field
+
+				if can_give_length(field):
+					length_field = field
+					length_field_force = 3 # will be 2 for the next field and 1 for the one after
+				elif is_array(field):
+					if length_field_force == 2 or (length_field_force == 1 and hint_give_length(length_field, field)):
+						field.length_given_by = length_field
+						length_field_force = 0
+						if length_field.name in ["length", "count", "size"]: # ambiguous short name and maybe duplicated
+							length_field.name = f"{field.name}Length" # meaningful and unique name
 
 				# Detect if the field is an enum with values defined in the field's notes
 				# ... And admire the different syntaxes used in the documentation ><
@@ -249,6 +272,18 @@ def parse_compound(ctx: LocalContext, p: PacketInfos, row, compound, nrows):
 	if current_switch is not None:
 		compound.add_switch(current_switch)
 	return i
+
+
+def can_give_length(field: Field):
+	return field.type in ["Varint", "Int", "Short", "Byte"]
+
+
+def hint_give_length(field: Field, to: Field):
+	return can_give_length(field) and (to.name in field.name)
+
+
+def is_array(field: Field):
+	return field.type.startswith("Array") or field.type.startswith("Optional[Array")
 
 
 def can_be_related(field: Field, is_enum: bool):
