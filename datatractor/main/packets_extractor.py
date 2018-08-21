@@ -264,7 +264,16 @@ def parse_compound(ctx: LocalContext, p: PacketInfos, row, compound, nrows):
 				if idx0 is not None:
 					enum = Enum(field)
 					sub = field_notes[idx0:]
-					split = sub.split(';') if ';' in sub else sub.split(',')
+					has_colon = ';' in sub
+					use_colon = has_colon and ((',' not in sub) or (sub.index(';') < sub.index(',')))
+					if use_colon:
+						split = sub.split(';')
+					elif has_colon:
+						# Fix for https://wiki.vg/Protocol#Join_Game
+						split = sub.split(';')[0].split(',')
+					else:
+						split = sub.split(',')
+					# Parse the entries
 					for s in split:
 						parse_enum_textentry(enum, s)
 
