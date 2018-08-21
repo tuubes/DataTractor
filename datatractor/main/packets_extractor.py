@@ -343,6 +343,7 @@ def parse_below(p: PacketInfos):
 					print("<" * 30)
 				else:
 					# >>>Search for the columns indexes<<<
+					names_with_values = False
 					if elem.column_count() == 1:
 						# Only one column => use it for the values and the names
 						values_col = names_col = 0
@@ -352,23 +353,29 @@ def parse_below(p: PacketInfos):
 						values_col = 0
 						row1 = [get_text(cell) for cell in elem.rows[1]]
 						for icol, content in enumerate(row1):
-							if re.match("\\d+", content.strip()):
+							c = content.strip()
+							if re.match("\\d+", c):
+								if re.fullmatch("\\d+:.+", c):
+									names_with_values = True
+									names_col = values_col
+									comments_col = values_col + 1
 								values_col = icol
 								break
 						# Find which column contains the names, defaults to values_col+1
-						names_col = values_col + 1
-						for icol, content in enumerate(row0):
-							c = content.lower()
-							if icol != values_col and (related_field.name.lower() == c or "name" in c):
-								names_col = icol
-								break
-						# Find which column contains the notes, defaults to names_col+1 or None
-						comments_col = names_col + 1
-						for icol, content in enumerate(row0):
-							c = content.lower()
-							if icol not in [values_col, names_col] and c == "notes":
-								comments_col = icol
-								break
+						if not names_with_values:
+							names_col = values_col + 1
+							for icol, content in enumerate(row0):
+								c = content.lower()
+								if icol != values_col and (related_field.name.lower() == c or "name" in c):
+									names_col = icol
+									break
+							# Find which column contains the notes, defaults to names_col+1 or None
+							comments_col = names_col + 1
+							for icol, content in enumerate(row0):
+								c = content.lower()
+								if icol not in [values_col, names_col] and c == "notes":
+									comments_col = icol
+									break
 						# Prevent IndexError in case of a weird table
 						if names_col >= elem.column_count():
 							names_col = 0
@@ -386,9 +393,16 @@ def parse_below(p: PacketInfos):
 						# Fix for the packet https://wiki.vg/Protocol#Effect, which has headers in the enum table
 						v = entry_row[values_col]
 						if not ((v.is_header and v.is_horizontal()) or v.is_left_ref()):
-							entry_value = get_text(entry_row[values_col])
-							entry_name = get_text(entry_row[names_col])
-							entry_comment = None if comments_col is None else get_text(entry_row[comments_col])
+							if names_with_values:
+								entry_value_and_name = get_text(entry_row[values_col])
+								entry_comment = None if comments_col is None else get_text(entry_row[comments_col])
+								s = entry_value_and_name.split(':', 1)
+								entry_value = s[0]
+								entry_name = s[1]
+							else:
+								entry_value = get_text(entry_row[values_col])
+								entry_name = get_text(entry_row[names_col])
+								entry_comment = None if comments_col is None else get_text(entry_row[comments_col])
 							if entry_name is not None:
 								parse_enum_entry(enum, entry_value, entry_name, entry_comment)
 			# Compound data -------------------------
