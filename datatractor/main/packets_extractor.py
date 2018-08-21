@@ -130,7 +130,27 @@ def parse_compound(ctx: LocalContext, p: PacketInfos, row, compound, nrows):
 		field_type = get_text(type_cell)
 		field_type = "" if field_type is None else field_type.lower()
 		field_notes = get_text(notes_cell)
-		if not low_field_name.startswith("no field") and not field_type.startswith("no field"):
+		# Switch entry --------------------------------------
+		# The switch is detected before the "no field" condition, otherwise we miss a few switch entries
+		if re.fullmatch("\\d+\\s*:.+", low_field_name):
+			if current_switch is None:  # new switch
+				if switch_field is None:  # should NOT happen
+					print(f"[ERROR] Invalid switch: no corresponding field")
+				else:
+					current_switch = Switch(switch_field)
+			if current_switch is not None:
+				split = low_field_name.split(':', 1)
+				entry_value = split[0]
+				entry_name = classname(snake_case(split[1].strip()))
+				s = SwitchEntry(entry_value, entry_name)
+				current_switch.add_entry(s)
+				ctx.names_col += 1  # move right
+				# don't change the type column in a switch
+				i = parse_compound(ctx, p, row=i, compound=s, nrows=name_cell.row_count())
+				i -= 1  # reverse the 'i += 1' made by parse_compound, we'll do it after the condition 'if not...'
+				ctx.names_col -= 1  # back to the current column
+		# No more processing of this row if there's no field
+		elif not low_field_name.startswith("no field") and not field_type.startswith("no field"):
 			field_name = varname(low_field_name)
 			field_type = typename(field_type)
 			# Defines the field of the following switch ---------
@@ -140,24 +160,6 @@ def parse_compound(ctx: LocalContext, p: PacketInfos, row, compound, nrows):
 					print(f"[WARNING] No field corresponds to the header cell {name_cell} - Not a switch?")
 				else:
 					switch_field = maybe_switch_field
-			# Switch entry --------------------------------------
-			elif re.fullmatch("\\d+\\s*:.*", low_field_name):
-				if current_switch is None:  # new switch
-					if switch_field is None:  # should NOT happen
-						print(f"[ERROR] Invalid switch: no corresponding field")
-					else:
-						current_switch = Switch(switch_field)
-				if current_switch is not None:
-					split = low_field_name.split(':', 1)
-					entry_value = split[0]
-					entry_name = classname(snake_case(split[1].strip()))
-					s = SwitchEntry(entry_value, entry_name)
-					current_switch.add_entry(s)
-					ctx.names_col += 1  # move right
-					# don't change the type column in a switch
-					i = parse_compound(ctx, p, row=i, compound=s, nrows=name_cell.row_count())
-					i -= 1  # reverse the 'i += 1' made by parse_compound, we'll do it after the condition 'if not...'
-					ctx.names_col -= 1  # back to the current column
 			# End of switch -------------------------------------
 			elif current_switch is not None:
 				compound.add_switch(current_switch)
