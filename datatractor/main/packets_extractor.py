@@ -186,7 +186,7 @@ def parse_compound(ctx: LocalContext, p: PacketInfos, row, compound, nrows):
 
 				# Defines the array's length
 				if length_field_force == 2 or (length_field_force == 1 and hint_give_length(length_field, field)):
-					field.length_given_by = length_field
+					field.set_length_given_by(length_field)
 					length_field_force = 0
 					if length_field.name in ["length", "count", "size"]:  # ambiguous short name and maybe duplicated
 						length_field.name = f"{field.name}Length"  # meaningful and unique name
@@ -212,7 +212,7 @@ def parse_compound(ctx: LocalContext, p: PacketInfos, row, compound, nrows):
 					length_field_force = 3 # will be 2 for the next field and 1 for the one after
 				elif is_array(field):
 					if length_field_force == 2 or (length_field_force == 1 and hint_give_length(length_field, field)):
-						field.length_given_by = length_field
+						field.set_length_given_by(length_field)
 						length_field_force = 0
 						if length_field.name in ["length", "count", "size"]: # ambiguous short name and maybe duplicated
 							length_field.name = f"{field.name}Length" # meaningful and unique name

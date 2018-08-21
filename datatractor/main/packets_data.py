@@ -11,6 +11,7 @@ class Field:
 	comment: str
 	string_max_length: Optional[int]
 	length_given_by: Optional  # Optional[Field]
+	is_length_of: Optional # Optional[Field]
 
 	def __init__(self, name: str, type: str, comment: str, string_max_length: Optional[int] = None):
 		# DEBUG print("Field: %s:%s, %s:%s, %s;%s" % (name_str, type(name_str), type_str, type(type_str), comment, type(comment)))
@@ -45,6 +46,10 @@ class Field:
 			   f'"switch": {jsonize(self.switch)},' \
 			   f'"compound": {jsonize(self.compound)}' \
 			   f'}}'
+
+	def set_length_given_by(self, field):
+		self.length_given_by = field
+		field.is_length_of = self
 
 
 class Compound:
