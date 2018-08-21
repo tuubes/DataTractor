@@ -51,6 +51,8 @@ def __type(name: str):
 				name = s[1]
 			else:
 				name = s[0]
+		if name[0] == '_':
+			name = name[1:]
 		if name[-1] == '_':
 			name = name[:-1]
 		return pascal_case(name)
@@ -61,7 +63,7 @@ def typename(name: str):
 	res = multireplace(name.lower(), rep)
 	if res == "optional,_varies":
 		return "Optional[Any]"
-	res = re.sub(r"array_of(.+)s", lambda m: f"Array[{__type(m.group(1))}]", res)  # remove the plural
+	res = re.sub(r"array_of(.{2,})s$", lambda m: f"Array[{__type(m.group(1))}]", res)  # remove the plural
 	res = re.sub(r"array_of(.+)", lambda m: f"Array[{__type(m.group(1))}]", res)
 	res = re.sub(r"optional(.+)", lambda m: f"Option[{__type(m.group(1))}]", res)
 	res = re.sub(r"(.+)array", lambda m: f"Array[{__type(m.group(1))}]", res)
