@@ -25,7 +25,7 @@ def valid_field_name(name: str):
 		if low[0].isdigit():
 			low = "_" + low
 		rep = {'/': '_', '-': "minus", '+': "plus", '.': '_', ')': "", ':': "_", '–': "", ' ': '_'}
-		return multireplace(low, rep)
+		return multireplace(low, rep).replace("___", "_or_")
 
 
 def varname(name: str):
