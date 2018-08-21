@@ -167,24 +167,23 @@ def parse_compound(ctx: LocalContext, p: PacketInfos, row, compound, nrows):
 				if field_type != "Array":
 					print(f"[WARNING] Nested compound with type {field_type}, expected Array")
 
-				# Parse the compound structure
 				compound_name = classname(snake_case(low_field_name))
-				compound_nested = Compound(compound_name)
+				# Create the corresponding field in the current compound
+				field_type = f"Array[{compound_name}]"
+				low_field_name = plural(low_field_name)
+				field = Field(low_field_name, field_type, field_notes)
+				compound.add_field(field)
+				p.register_field(field)
+				switch_field = field
+
+				# Parse the compound structure
+				compound_nested = Compound(compound_name, field)
 				ctx.names_col += 1  # move right
 				ctx.types_col += 1  # move the type too, it's not a switch
 				i = parse_compound(ctx, p, row=i, compound=compound_nested, nrows=name_cell.row_count())
 				i -= 1  # reverse the 'i += 1' made by parse_compound, we'll do it after the condition 'if not...'
 				ctx.names_col -= 1  # back to the current column
 				ctx.types_col -= 1  # don't forget the type :-)
-
-				# Create the corresponding field in the current compound
-				field_type = f"Array[{compound_name}]"
-				low_field_name = plural(low_field_name)
-				field = Field(low_field_name, field_type, field_notes)
-				field.compound = compound_nested
-				compound.add_field(field)
-				p.register_field(field)
-				switch_field = field
 			# Single field ---------------------------------------
 			else:
 				field_type, field_maxlength = extract_type_and_length(field_type)
