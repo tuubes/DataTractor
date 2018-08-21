@@ -76,7 +76,9 @@ def first_up(s: str):
 
 def plural(noun: str):
 	last = noun[-1]
-	if last == 'y':
+	if last == 's':
+		return noun
+	elif last == 'y':
 		return noun[:-1] + "ies"
 	elif last == 'h':
 		return noun[:-1] + "es"
