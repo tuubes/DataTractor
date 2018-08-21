@@ -209,17 +209,17 @@ def parse_compound(ctx: LocalContext, p: PacketInfos, row, compound, nrows):
 						if not is_semi_byte_a and not is_semi_byte_b:
 							idx0 = field_notes.index("0xF0 =")
 							field_notes = field_notes.replace(" =", ':').replace('=', ':')
-					elif "0 =" in field_notes:
+					elif "0 =" in field_notes and not "20 = full" in field_notes:
 						idx1 = field_notes.index("1 =") if "1 =" in field_notes else inf
 						idx0 = field_notes.index("0 =")
 						idx0 = min(idx0, idx1)
 						field_notes = field_notes.replace(" =", ':').replace('=', ':')
-					elif "0=" in field_notes:
+					elif "0=" in field_notes and "from y=0" not in field_notes:
 						idx1 = field_notes.index("1=") if "1=" in field_notes else inf
 						idx0 = field_notes.index("0=")
 						idx0 = min(idx0, idx1)
 						field_notes = field_notes.replace(" =", ':').replace('=', ':')
-					elif "1 for" in field_notes:
+					elif "1 for" in field_notes and "1 for every" not in field_notes:
 						idx0 = field_notes.index("1 for")
 						field_notes = field_notes.replace(" for", ':')
 					elif "North =" in field_notes and "," in field_notes:
