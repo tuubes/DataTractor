@@ -423,7 +423,7 @@ def parse_below(p: PacketInfos):
 						rep = {"Array[": "", "Option[": "", ']': ""}
 						compound_name = multireplace(t, rep)
 					else:
-						compound_name = classname(related_field.name)
+						compound_name = t
 					compound = Compound(compound_name, related_field)
 					parse_compound(ctx, p, row=1, compound=compound, nrows=ctx.rowlimit - 1)
 					# Recreate the field list to include the fields of the new compound:
