@@ -203,6 +203,10 @@ def parse_compound(ctx: LocalContext, p: PacketInfos, row, compound, nrows):
 						idx0 = field_notes.index("0:")
 					elif "0 :" in field_notes:
 						idx0 = field_notes.index("0 :")
+					elif "0x1:" in field_notes and "0x2:" in field_notes:
+						# This a bitmask but we store its values the same way as an enum
+						# The generator won't generate a real "enum" but a class with constants values so it's fine
+						idx0 = field_notes.index("0x1:")
 					elif "0xF0 =" in field_notes:  # priority over "0 ="
 						is_semi_byte_a = (field_notes.count('=') == 2) and ("0x0F" in field_notes)
 						is_semi_byte_b = "4 most significant bits" in field_notes
