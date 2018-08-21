@@ -55,6 +55,8 @@ def __type(name: str):
 def typename(name: str):
 	rep = {"_enum": "", "enum": "", '/': '_', '-': "", '.': "", '+': "", ':': "", ' ': '_'}
 	res = multireplace(name.lower(), rep)
+	if res == "optional,_varies":
+		return "Optional[Any]"
 	res = re.sub(r"array_of(.+)s", lambda m: f"Array[{__type(m.group(1))}]", res)  # remove the plural
 	res = re.sub(r"array_of(.+)", lambda m: f"Array[{__type(m.group(1))}]", res)
 	res = re.sub(r"optional(.+)", lambda m: f"Option[{__type(m.group(1))}]", res)
