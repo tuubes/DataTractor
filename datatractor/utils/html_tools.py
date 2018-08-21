@@ -6,6 +6,12 @@ from bs4.element import Tag
 from utils.string_tools import pretty_matrix_str
 
 headings = ["h1", "h2", "h3", "h4", "h5", "h6"]
+ignore_del = True
+
+
+def is_stroke_through(t: Tag):
+	style = t.attrs.get("style")
+	return ("decoration: line-through" in style) if style else False
 
 
 def get_text(element, joiner=" "):
@@ -19,6 +25,8 @@ def get_text(element, joiner=" "):
 		else:
 			return joiner.join((v for v in (get_text(e) for e in element) if v is not None))
 	elif isinstance(element, Tag):
+		if element.name == "del" and ignore_del:
+			return None
 		return get_text(element.contents)
 	else:
 		return str(element)
@@ -155,7 +163,9 @@ def parse_list(list: Tag, trim: bool):
 			if len(trimmed) > 0:
 				elements.append(NavigableString(trimmed))
 		else:
-			elements.append(get_text(inside))
+			text = get_text(inside)
+			if text is not None:
+				elements.append(text)
 	return HtmlList(elements, ordered)
 
 
@@ -173,6 +183,9 @@ def parse_table(table: Tag, trim: bool):
 					col_count += int(td["colspan"])
 				else:
 					col_count += 1
+		elif ignore_del:
+			if all(is_stroke_through(td) for td in tr.find_all(["th", "td"])):
+				row_count -= 1
 
 	rows: List[List[HtmlCell]] = []
 	for i in range(0, row_count):
@@ -192,6 +205,10 @@ def parse_table(table: Tag, trim: bool):
 
 			# Remembers if it's a tr or th
 			is_header = (td.name == "th")
+
+			# Detects if it's deleted
+			is_deleted = is_stroke_through(td)
+
 			# Gets cell content and trims it if required
 			cell_content: List = td.contents
 			if trim:
@@ -216,9 +233,9 @@ def parse_table(table: Tag, trim: bool):
 			ispan = max(ispan, 1)  # fix values <= 0
 			jspan = max(jspan, 1)  # fix values <= 0
 			if ispan == jspan == 1:
-				rows[i][j] = HtmlCell(cell_content, is_header)
+				rows[i][j] = HtmlCell(cell_content, is_header, is_deleted)
 			else:
-				ref = BigCell(cell_content, is_header, ispan, jspan)
+				ref = BigCell(cell_content, is_header, is_deleted, ispan, jspan)
 				for xi in range(i, min(i + ispan, row_count)):
 					for xj in range(j, min(j + jspan, col_count)):
 						if xi == i and xj == j:
@@ -354,9 +371,10 @@ class HtmlSection:
 class HtmlCell:
 	"""A cell in a table"""
 
-	def __init__(self, content, is_header):
+	def __init__(self, content, is_header, is_deleted=False):
 		self.content = content
 		self.is_header = is_header
+		self.is_deleted = is_deleted
 
 	def __str__(self) -> str:
 		prefix = "$" if self.is_header else ""
@@ -394,8 +412,8 @@ class BigCell(HtmlCell):
 	The BigCell is stored in its first table cell, the other occupied cells are filled with RefCells.
 	"""
 
-	def __init__(self, content, is_header, rowspan, colspan):
-		super().__init__(content, is_header)
+	def __init__(self, content, is_header, is_deleted, rowspan, colspan):
+		super().__init__(content, is_header, is_deleted)
 		self.rowspan = rowspan
 		self.colspan = colspan
 

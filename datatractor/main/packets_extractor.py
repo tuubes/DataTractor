@@ -115,6 +115,10 @@ def parse_compound(ctx: LocalContext, p: PacketInfos, row, compound, nrows):
 			# which has its ID,state=play and boundTo=client information on a separate line
 			i += 1
 			continue
+		if name_cell.is_deleted:
+			# Ignore deleted cells, for Pre-release protocol
+			i += 1
+			continue
 		type_cell = ctx.table[i][ctx.types_col]
 		notes_cell = ctx.table[i][ctx.notes_col]
 		low_field_name = get_text(name_cell)
