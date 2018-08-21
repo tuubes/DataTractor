@@ -268,7 +268,7 @@ def parse_below(p: PacketInfos):
 			is_attr = (attribute_columns is not None)
 
 			# Find the related field
-			row0: List[str] = [get_text(cell).lower() for cell in elem.rows[0]]
+			row0: List[str] = [get_text(cell).lower() for cell in elem.rows[0] if not cell.is_deleted]
 			compatible_fields = [(f, f.name.lower()) for f in fields if can_be_related(f, is_enum)]
 			related_field: Field = None
 			for (field, name) in compatible_fields:
