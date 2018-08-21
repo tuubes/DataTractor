@@ -30,6 +30,18 @@ class Field:
 		maxlen = "" if self.max_length is None else f" (length <= {self.max_length})"
 		return f"Field({self.name}: {self.type}{maxlen}{comment})"
 
+	def json(self):
+		return f'{{' \
+			   f'"dataType": "Field",' \
+			   f'"name": "{self.name}",' \
+			   f'"type": "{self.type}",' \
+			   f'"comment": "{self.comment}",' \
+			   f'"maxLength": {jsonize(self.max_length)},' \
+			   f'"enum": {jsonize(self.enum)},' \
+			   f'"switch": {jsonize(self.switch)},' \
+			   f'"compound": {jsonize(self.compound)}' \
+			   f'}}'
+
 
 class Compound:
 	"""A structure composed of fields"""
@@ -50,6 +62,14 @@ class Compound:
 	def is_empty(self):
 		return len(self.entries) == 0
 
+	def json(self):
+		return f'{{' \
+			   f'"dataType": "Compound",' \
+			   f'"name": "{self.name}",' \
+			   f'"field": {jsonize(self.field)},' \
+			   f'"entries": {jsonize(self.entries)}' \
+			   f'}}'
+
 
 class SwitchEntry(Compound):
 	"""Switch entry"""
@@ -60,6 +80,15 @@ class SwitchEntry(Compound):
 
 	def __str__(self):
 		return f"SwitchEntry({self.value} => {self.name})"
+
+	def json(self):
+		return f'{{' \
+			   f'"dataType": "SwitchEntry",' \
+			   f'"name": "{self.name}",' \
+			   f'"value": {jsonize(self.value)}' \
+			   f'"field": {jsonize(self.field)},' \
+			   f'"entries": {jsonize(self.entries)}' \
+			   f'}}'
 
 
 class Switch:
@@ -75,9 +104,16 @@ class Switch:
 	def add_entry(self, entry: SwitchEntry):
 		self.entries.append(entry)
 
-
 	def __str__(self):
 		return f"Switch{self.entries}"
+
+	def json(self):
+		return f'{{' \
+			   f'"dataType": "Switch",' \
+			   f'"name": "{self.name}",' \
+			   f'"field": {jsonize(self.field)},' \
+			   f'"entries": {jsonize(self.entries)}' \
+			   f'}}'
 
 
 class EnumEntry:
@@ -88,6 +124,14 @@ class EnumEntry:
 
 	def __str__(self):
 		return f"EnumEntry({self.name} = {self.value})"
+
+	def json(self):
+		return f'{{' \
+			   f'"dataType": "EnumEntry",' \
+			   f'"name": "{self.name}",' \
+			   f'"value": {jsonize(self.value)},' \
+			   f'"comment": {jsonize(self.comment)}' \
+			   f'}}'
 
 
 class Enum:
@@ -102,6 +146,14 @@ class Enum:
 
 	def add_entry(self, entry: EnumEntry):
 		self.entries.append(entry)
+
+	def json(self):
+		return f'{{' \
+			   f'"dataType": "Enum",' \
+			   f'"name": "{self.name}",' \
+			   f'"field": {jsonize(self.field)},' \
+			   f'"entries": {jsonize(self.entries)}' \
+			   f'}}'
 
 
 class Protocol:
@@ -123,6 +175,16 @@ class Protocol:
 		return "Protocol(%s, %d, %s, %s, %s, %s)" % (
 			self.game_version, self.number, str(self.handshake), str(self.play), str(self.status), str(self.login))
 
+	def json(self):
+		return f'{{' \
+			   f'"dataType": "Protocol",' \
+			   f'"gameVersion": "{self.game_version}",' \
+			   f'"number": {self.number},' \
+			   f'"play": {jsonize(self.play)},' \
+			   f'"status": {jsonize(self.status)},' \
+			   f'"login": {jsonize(self.login)}' \
+			   f'}}'
+
 
 class SubProtocol:
 	"""Sub-protocol"""
@@ -141,6 +203,14 @@ class SubProtocol:
 
 	def packet_count(self):
 		return len(self.clientbound) + len(self.serverbound)
+
+	def json(self):
+		return f'{{' \
+			   f'"dataType": "SubProtocol",' \
+			   f'"name": "{self.name}",' \
+			   f'"clientBound": {jsonize(self.clientbound)},' \
+			   f'"serverBound": {jsonize(self.serverbound)},' \
+			   f'}}'
 
 
 class PacketInfos:
@@ -170,6 +240,13 @@ class PacketInfos:
 	def register_field(self, field: Field):
 		self.all_fields.append(field)
 		self.dict_fields[field.name.lower()] = field
+
+	def json(self):
+		return f'{{' \
+			   f'"dataType": "PacketInfos",' \
+			   f'"id": {self.main_id},' \
+			   f'"compound": {self.main_compound.json()},' \
+			   f'}}'
 
 
 class LocalContext:

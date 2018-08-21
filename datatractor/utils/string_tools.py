@@ -141,3 +141,21 @@ def pretty_matrix_str(matrix):
 			j += 1
 		res.append(" | ".join(line))
 	return "\n".join(res)
+
+
+def jsonize(s):
+	if s is None:
+		return "null"
+	if isinstance(s, int):
+		return str(s)
+	elif isinstance(s, float):
+		return str(s)
+	elif isinstance(s, bool):
+		return str(s).lower()
+	elif isinstance(s, str):
+		return f'"{str(s)}"'
+	elif isinstance(s, list):
+		content = ",".join([jsonize(e) for e in s])
+		return f'[{content}]'
+	else:
+		return s.json()
