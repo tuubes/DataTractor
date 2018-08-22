@@ -33,12 +33,14 @@ def varname(name: str):
 
 
 def constname(name: str):
-	return valid_field_name(name).upper()
+	f = valid_field_name(name)
+	return "TYPE" if f == "typ" else f.upper()  # 'TYPE' upper-case is a valid Scala name
 
 
 def classname(name: str):
 	rep = {'/': '_', '-': "", '+': "", '.': "", ':': "", ' ': '_'}
-	return pascal_case(multireplace(re.sub("\(.*?\)", "", name.lower()), rep))
+	f = multireplace(re.sub("\(.*?\)", "", name.lower()), rep)
+	return "Type" if f == "typ" else pascal_case(f)  # 'Type' with a capital 'T' is a valid Scala name
 
 
 def __type(name: str):

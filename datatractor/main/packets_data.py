@@ -154,7 +154,7 @@ class Enum:
 		self.field = field
 		field.enum = self
 		self.entries = []
-		self.name = first_up(field.name)
+		self.name = "Type" if field.name == "typ" else first_up(field.name)
 
 	def add_entry(self, entry: EnumEntry):
 		self.entries.append(entry)
