@@ -105,6 +105,7 @@ def parse_compound(ctx: LocalContext, p: PacketInfos, row, compound, nrows):
 	end = row + nrows
 	assert end <= ctx.rowlimit, f"Invalid end {end} = {row} + {nrows} for compound {compound}"
 
+	option_guard_field = None
 	length_field_force = 0  # when 0, length_field expires and is set to None
 	length_field = None
 	switch_field = None
@@ -207,6 +208,7 @@ def parse_compound(ctx: LocalContext, p: PacketInfos, row, compound, nrows):
 				p.register_field(field)
 				switch_field = field
 
+				# Handle arrays' length
 				if can_give_length(field):
 					length_field = field
 					length_field_force = 3 # will be 2 for the next field and 1 for the one after
@@ -216,6 +218,39 @@ def parse_compound(ctx: LocalContext, p: PacketInfos, row, compound, nrows):
 						length_field_force = 0
 						if length_field.name in ["length", "count", "size"]: # ambiguous short name and maybe duplicated
 							length_field.name = f"{field.name}Length" # meaningful and unique name
+
+				# Handle optional fields
+				if is_optional(field):
+					guard = option_guard_field
+					if guard.type == "Boolean":
+						field.only_if = guard.name
+					elif field.comment is None:
+						print(f"[WARNING] Cannot detect what determines the presence of {field}")
+					else:
+						c: str
+						c = field.comment.lower()
+						only_if = ("only if" in c)
+						sent_when = ("sent when" in c)
+						if not only_if and not sent_when:
+							print(f"[WARNING] Cannot detect what determines the presence of {field}")
+						else:
+							if only_if:
+								c = c[c.index("only if"):].replace("only if", "").strip()
+							else: # sent_when
+								c = c[c.index("sent when"):].replace("sent when", "").strip()
+							if ';' in c:
+								c = c[:c.index(';')]
+							if '.' in c:
+								c = c[:c.index('.')]
+							# Parse the condition in the comments
+							condition = find_guard_condition(p, field, guard, c)
+							if condition is None:
+								print(f"[WARNING] Cannot detect what determines the presence of {field}")
+							else:
+								field.only_if = condition
+
+				else:
+					option_guard_field = field
 
 				# Detect if the field is an enum with values defined in the field's notes
 				# ... And admire the different syntaxes used in the documentation ><
@@ -296,6 +331,68 @@ def hint_give_length(field: Field, to: Field):
 
 def is_array(field: Field):
 	return field.type.startswith("Array") or field.type.startswith("Option[Array")
+
+
+def is_optional(field: Field):
+	return field.type.startswith("Option")
+
+
+def find_guard_value(guard: Field, value: str):
+	if value.isdigit() or value in ["true", "false"]:
+		return value
+	elif guard.type == "String":
+		content = value.replace('"', "")
+		return f'"{content}"'
+	elif guard.enum is not None:
+		big_v = constname(snake_case(value))
+		entry: EnumEntry
+		for entry in guard.enum.entries:
+			if entry.name == big_v:
+				return f"{guard.enum.name}.{entry.name}"
+	return None
+
+
+def find_guard_condition(p: PacketInfos, field: Field, guard: Field, c: str):
+	m = re.match("(.+) is (.+) or (.+)", c)
+	if m is not None:
+		g = p.dict_fields.get(varname(snake_case(m.group(1))))
+		guard = g if g is not None else guard
+		return f"{guard.name} == {m.group(2)} || {guard.name} == {m.group(3)}"
+
+	if "indicates it" in c and guard.enum is not None and len(guard.enum.entries) > 0:
+		return f"{guard.name} & {guard.enum.entries[0].name} != 0"
+
+	operator = None
+	m = re.match("(.+) does not equal (.+)", c)
+	if m is not None:
+		operator = "!="
+	else:
+		m = re.match("(.+) is more than (.+)", c)
+		if m is not None:
+			operator = ">"
+		else:
+			m = re.match("(.+) is less than (.+)", c)
+			if m is not None:
+				operator = "<"
+			else:
+				m = re.match("(.+) is (.+)", c)
+				if m is not None:
+					operator = "=="
+				else:
+					return None
+
+	specified_guard_name = m.group(1)
+	g = p.dict_fields.get(varname(snake_case(specified_guard_name)))
+	guard = g if g is not None else guard
+	if guard is None:
+		return None
+
+	specified_value = m.group(2)
+	value = find_guard_value(guard, specified_value)
+	if value is None:
+		return None
+
+	return f"{guard.name} {operator} {value}"
 
 
 def can_be_related(field: Field, is_enum: bool):

@@ -12,6 +12,7 @@ class Field:
 	string_max_length: Optional[int]
 	length_given_by: Optional  # Optional[Field]
 	is_length_of: Optional # Optional[Field]
+	only_if: Optional[str]
 
 	def __init__(self, name: str, type: str, comment: str, string_max_length: Optional[int] = None):
 		# DEBUG print("Field: %s:%s, %s:%s, %s;%s" % (name_str, type(name_str), type_str, type(type_str), comment, type(comment)))
@@ -20,6 +21,7 @@ class Field:
 		self.comment = comment
 		self.string_max_length = string_max_length
 		self.length_given_by = None
+		self.only_if = None
 		# Additional fields
 		self.enum = None
 		self.switch = None
@@ -42,6 +44,7 @@ class Field:
 			   f'"comment": "{self.comment}",' \
 			   f'"stringMaxLength": {jsonize(self.string_max_length)},' \
 			   f'"lengthGivenBy": {"null" if self.length_given_by is None else jsonize(self.length_given_by.name)}' \
+			   f'"onlyIf": {"null" if self.only_if is None else jsonize(self.only_if)}' \
 			   f'"enum": {jsonize(self.enum)},' \
 			   f'"switch": {jsonize(self.switch)},' \
 			   f'"compound": {jsonize(self.compound)}' \
@@ -291,7 +294,8 @@ def str_compound_entries(l, c: Compound, level=0):
 		elif isinstance(entry, Field):
 			maxlen = "" if entry.string_max_length is None else f" (length <= {entry.string_max_length})"
 			lengiv = "" if entry.length_given_by is None else f" (length given by {entry.length_given_by.type} {entry.length_given_by.name})"
-			indent(l, f"Field {entry.name}: {entry.type}{maxlen}{lengiv}", level)
+			onlyif = "" if entry.only_if is None else f" (ONLY IF {entry.only_if})"
+			indent(l, f"Field {entry.name}: {entry.type}{maxlen}{lengiv}{onlyif}", level)
 			if entry.compound is not None:
 				str_compound(l, entry.compound, level + 1)
 			if entry.enum is not None:
