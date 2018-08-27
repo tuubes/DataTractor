@@ -11,8 +11,10 @@ class Field:
 	comment: str
 	string_max_length: Optional[int]
 	length_given_by: Optional  # Optional[Field]
-	is_length_of: Optional # Optional[Field]
+	is_length_of: Optional  # Optional[Field]
 	only_if: Optional[str]
+	only_if_bool: Optional  # Optional[Field]
+	is_condition_of: Optional  # Optional[Field]
 
 	def __init__(self, name: str, type: str, comment: str, string_max_length: Optional[int] = None):
 		# DEBUG print("Field: %s:%s, %s:%s, %s;%s" % (name_str, type(name_str), type_str, type(type_str), comment, type(comment)))
@@ -21,7 +23,10 @@ class Field:
 		self.comment = comment
 		self.string_max_length = string_max_length
 		self.length_given_by = None
+		self.is_length_of = None
 		self.only_if = None
+		self.only_if_bool = None
+		self.is_condition_of = None
 		# Additional fields
 		self.enum = None
 		self.switch = None

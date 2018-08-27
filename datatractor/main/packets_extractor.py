@@ -229,19 +229,24 @@ def parse_compound(ctx: LocalContext, p: PacketInfos, row, compound, nrows):
 					guard = option_guard_field
 					if guard.type == "Boolean":
 						field.only_if = guard.name
+						field.only_if_bool = guard
+						guard.is_condition_of = field
 					elif field.comment is None:
 						print(f"[WARNING] Cannot detect what determines the presence of {field}")
 					else:
 						c: str
 						c = field.comment.lower()
+						present_if = ("present if" in c)
 						only_if = ("only if" in c)
 						sent_when = ("sent when" in c)
 						if not only_if and not sent_when:
 							print(f"[WARNING] Cannot detect what determines the presence of {field}")
 						else:
+							if present_if:
+								c = c[c.index("present if"):].replace("present if").strip()
 							if only_if:
 								c = c[c.index("only if"):].replace("only if", "").strip()
-							else: # sent_when
+							else:  # sent_when
 								c = c[c.index("sent when"):].replace("sent when", "").strip()
 							if ';' in c:
 								c = c[:c.index(';')]
@@ -251,6 +256,7 @@ def parse_compound(ctx: LocalContext, p: PacketInfos, row, compound, nrows):
 							condition = find_guard_condition(p, field, guard, c)
 							if condition is None:
 								print(f"[WARNING] Cannot detect what determines the presence of {field}")
+								print(f"	   -> c = {c}")
 							else:
 								field.only_if = condition
 
