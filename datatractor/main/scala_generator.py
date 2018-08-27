@@ -255,9 +255,7 @@ def statement_write(entry: Union[Field, Switch], indent_level: int, typ=None, va
 			return f"{_}// Nothing to write for type {typ}"
 
 		var = entry.name if var is None else var
-		if entry and entry.switch:
-			var += "Id"
-		elif entry and entry.is_length_of:
+		if entry and entry.is_length_of:
 			var = f"{entry.is_length_of.name}.length"
 
 		if typ.startswith("Option["):
