@@ -62,8 +62,8 @@ else:
 			extractors.append(BlocksExtractor(game_version))
 
 	if len(extractors) == 0:
-		print("No extractors specified, let's run all of them!")
-		extractors = [PacketsExtractor(game_version), BlocksExtractor(game_version)]
+		print("No extractors specified => running the packet extractor.")
+		extractors = [PacketsExtractor(game_version)]
 
 	for extractor in extractors:
 		print("====", extractor.name, "====")
