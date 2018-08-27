@@ -367,8 +367,8 @@ def gen_compound_class(c: Compound,
 	class_start = f"class {c.name}"
 	class_declaration = f"{indent}class {c.name}{fields_decl} {extends}{{"
 	if len(class_declaration) > line_max:
-		fields = f"\n{indent}{' ' * (len(class_start)+1)}".join(lfields)
-		fields_decl = f"({fields})"
+		fields = f",\n{indent}    ".join(lfields)
+		fields_decl = f"(\n{indent}    {fields})\n{indent} "
 	if len(lscaladoc) > 0:
 		scaladoc = f"{indent}/**\n{indent} * " + f"\n{indent} * ".join(lscaladoc) + f"\n{indent} */\n"
 	else:
