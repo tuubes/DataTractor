@@ -1,7 +1,8 @@
-import datatractor.main.packets_extractor as p_extractor
-import datatractor.main.blocks_extractor as b_extractor
-import datatractor.main.scala_generator as generator
 import os
+
+import datatractor.main.blocks_extractor as b_extractor
+import datatractor.main.packets_extractor as p_extractor
+import datatractor.main.scala_generator as generator
 
 release_version = None
 
@@ -31,28 +32,35 @@ class PacketsExtractor:
 	def extract(self, output_dir):
 		protocol = p_extractor.extract_packets(self.game_version)
 		print("Generating Scala files...")
-		ver = "mc" + self.game_version.replace(".", "_")
-		base_package = "org.tuubes.craft.%s" % ver
+		generator.init(self.game_version)
 		sub: p_extractor.SubProtocol
 		for sub in [protocol.handshake, protocol.status, protocol.login, protocol.play]:
 			sub_name = sub.name.lower()
-			print("Processing %s packets..." % sub_name)
-			dir_sub = "%s/packets/%s" % (output_dir, sub_name)
-			dir_cb = dir_sub + "/clientbound"
-			dir_sb = dir_sub + "/serverbound"
-			os.makedirs(dir_cb)
-			os.makedirs(dir_sb)
-			for packet in sub.clientbound:
-				generator.write_packet_class(dir_cb, packet, "%s.%s.clientbound" % (base_package, sub_name))
-			for packet in sub.serverbound:
-				generator.write_packet_class(dir_sb, packet, "%s.%s.serverbound" % (base_package, sub_name))
+			print(f"Processing {sub_name} packets...")
+			sub_dir = f"{output_dir}/packets/{sub_name}"
 
-			generator.write_protocol_class(dir_sub, sub, "%s.%s" % (base_package, sub_name))
+			sub_clientbound = f"{sub_dir}/clientbound"
+			os.makedirs(sub_clientbound)
+			for packet in sub.clientbound:
+				packet: p_extractor.PacketInfos
+				if not packet.name().endswith("Packet"):
+					packet.main_compound.name += "Packet"
+				file = f"{sub_clientbound}/{packet.name()}.scala"
+				generator.write_packet_class(packet, file, subpackage=f"packets.{sub_name}.clientbound")
+
+			sub_serverbound = f"{sub_dir}/serverbound"
+			os.makedirs(sub_serverbound)
+			for packet in sub.serverbound:
+				packet: p_extractor.PacketInfos
+				if not packet.name().endswith("Packet"):
+					packet.main_compound.name += "Packet"
+				file = f"{sub_serverbound}/{packet.name()}.scala"
+				generator.write_packet_class(packet, file, subpackage=f"packets.{sub_name}.serverbound")
+
+			file = f"{sub_dir}/{sub.name.title()}.scala"
+			generator.write_protocol_class(sub, file, importsubpackage=f"packets.{sub_name}.serverbound", subpackage=f"packets.{sub_name}")
 
 		print("Generation complete!")
-		print("There are %d TODOs and %s unhandled types that you should review" % (generator.todo_count, generator.unhandled_type_count))
-		generator.todo_count = 0
-		generator.unhandled_type_count = 0
 
 
 class BlocksExtractor:

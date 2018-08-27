@@ -275,6 +275,12 @@ class PacketInfos:
 		self.all_fields.append(field)
 		self.dict_fields[field.name.lower()] = field
 
+	def name(self):
+		return self.main_compound.name
+
+	def id(self):
+		return self.main_id
+
 	def json(self):
 		return f'{{' \
 			   f'"dataType": "PacketInfos",' \
