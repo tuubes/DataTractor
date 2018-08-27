@@ -121,6 +121,7 @@ class Switch:
 		self.entries = []
 		self.is_ref_out = is_ref_out
 		self.name = first_up(field.name)
+		self.id_field_name = "typeId" if field.name == "typ" else f"{field.name}Id"
 
 	def add_entry(self, entry: SwitchEntry):
 		self.entries.append(entry)
@@ -155,6 +156,12 @@ class EnumEntry:
 			   f'}}'
 
 
+_imposed_names = {
+	"typ": "Type",
+	"slot": "SlotEnum"
+}
+
+
 class Enum:
 	"""A field with a limited number of values, usually integers"""
 	entries: List[EnumEntry]
@@ -163,7 +170,8 @@ class Enum:
 		self.field = field
 		field.enum = self
 		self.entries = []
-		self.name = "Type" if field.name == "typ" else first_up(field.name)
+		imposed = _imposed_names.get(field.name)
+		self.name = imposed if imposed is not None else first_up(field.name)
 
 	def add_entry(self, entry: EnumEntry):
 		self.entries.append(entry)
