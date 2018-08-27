@@ -109,6 +109,7 @@ def parse_compound(ctx: LocalContext, p: PacketInfos, row, compound, nrows):
 	length_field_force = 0  # when 0, length_field expires and is set to None
 	length_field = None
 	switch_field = None
+	switch_field_is_out = False
 	current_switch = None
 	i = row
 	while i < end:
@@ -143,7 +144,7 @@ def parse_compound(ctx: LocalContext, p: PacketInfos, row, compound, nrows):
 				if switch_field is None:  # should NOT happen
 					print(f"[ERROR] Invalid switch: no corresponding field")
 				else:
-					current_switch = Switch(switch_field)
+					current_switch = Switch(switch_field, switch_field_is_out)
 			if current_switch is not None:
 				split = low_field_name.split(':', 1)
 				entry_value = split[0]
@@ -162,10 +163,13 @@ def parse_compound(ctx: LocalContext, p: PacketInfos, row, compound, nrows):
 			field_type = typename(field_type)
 			# Defines the field of the following switch ---------
 			if name_cell.is_header:
-				maybe_switch_field = p.dict_fields.get(field_name)
+				field_name_lower = field_name.lower()
+				maybe_switch_field = p.dict_fields.get(field_name_lower)
 				if maybe_switch_field is None:
 					print(f"[WARNING] No field corresponds to the header cell {name_cell} - Not a switch?")
 				else:
+					# Detect if the field we refer to is outside of the current compound (which containts the switch)
+					switch_field_is_out = (field_name_lower not in compound.fields_dict)
 					switch_field = maybe_switch_field
 			# End of switch -------------------------------------
 			elif current_switch is not None:

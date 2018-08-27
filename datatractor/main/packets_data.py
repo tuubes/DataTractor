@@ -57,19 +57,26 @@ class Field:
 
 class Compound:
 	"""A structure composed of fields"""
+	fields_dict: Dict[str, Field]
+	is_ref_out: bool  # True if this compound contains a Switch with is_ref_out == True
 
 	def __init__(self, name, field=None):
 		self.name = name
 		self.entries = []
+		self.fields_dict = {}
+		self.is_ref_out = False
 		self.field = field
 		if field is not None:
 			field.compound = self
 
 	def add_field(self, field: Field):
 		self.entries.append(field)
+		self.fields_dict[field.name.lower()] = field
 
 	def add_switch(self, switch):
 		self.entries.append(switch)
+		if switch.is_ref_out:
+			self.is_ref_out = True
 
 	def is_empty(self):
 		return len(self.entries) == 0
@@ -106,11 +113,13 @@ class SwitchEntry(Compound):
 class Switch:
 	"""The data changes depending on another field, which should be an enum"""
 	entries: List[SwitchEntry]
+	is_ref_out: bool  # True if the field we refer to is outside of the compound that contains the switch
 
-	def __init__(self, field: Field):
+	def __init__(self, field: Field, is_ref_out):
 		self.field = field
 		field.switch = self
 		self.entries = []
+		self.is_ref_out = is_ref_out
 		self.name = first_up(field.name)
 
 	def add_entry(self, entry: SwitchEntry):
