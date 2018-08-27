@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, Tuple
 
 from datatractor.main.packets_extractor import *
 
@@ -24,10 +24,12 @@ def init(version: str, output_name="out", input_name="in", max_line_length=100):
 	line_max = max_line_length
 
 
-def write_packet_class(p: PacketInfos, filepath: str, fullpackage=None, subpackage=None):
+def write_packet_class(p: PacketInfos, filepath: str, fullpackage=None, subpackage=None, infos="?"):
 	package = fullpackage if fullpackage else (f"{base_package}.{subpackage}" if subpackage else "???")
-	pclass = gen_compound_class(p.main_compound, 0, parent="Packet")
-	pobject = gen_compound_object(p.main_compound, 0, parent="PacketObj", additional=f"def id = {p.id()}")
+	def_id = f"def id = {p.id()}"
+	doc = f"Packet {hex(p.id())}: {p.name().replace('Packet', '')} ({infos})"
+	pclass = gen_compound_class(p.main_compound, 0, parent="Packet", additional=def_id, doc_text=doc)
+	pobject = gen_compound_object(p.main_compound, 0, parent="PacketObj", additional=def_id)
 	with open(filepath, mode="w+") as f:
 		f.write(f"package {package}\n\n")
 		f.write(pclass)
@@ -290,7 +292,9 @@ def gen_compound_class(c: Compound,
 					   indent_level: int,
 					   do_import=False,
 					   parent: Optional[str] = "Writeable",
-					   additional: Optional[str] = None) -> str:
+					   additional: Optional[str] = None,
+					   doc_text: Optional[str] = None,
+					   doc_link: Optional[Tuple[str, str]] = None) -> str:
 	indent = "  " * indent_level
 	indent1 = "  " + indent
 	indent2 = "  " + indent1
@@ -298,6 +302,12 @@ def gen_compound_class(c: Compound,
 	lwrites = []
 	lswitches = []  # Contains only the switches that need to be in the class, usually they're in the companion object
 	lcompounds = []  # Contains only the compounds that need to be in the class, ...
+	lscaladoc = []  # The lines of the documentation
+	if doc_text:
+		lscaladoc.append(doc_text)
+		lscaladoc.append("")
+	if doc_link:
+		lscaladoc.append(f"@see [[{doc_link[0]} {doc_link[1]}]]")
 	for entry in c.entries:
 		if isinstance(entry, Field) and entry.is_condition_of:
 			var = f"{entry.is_condition_of.name}.isDefined"
@@ -312,6 +322,10 @@ def gen_compound_class(c: Compound,
 				lfields.append(declaration(entry))
 				if entry.compound is not None and entry.compound.is_ref_out:
 					lcompounds.append(gen_compound_class(entry.compound, indent_level + 1))
+				# Add it to the documentation:
+				comm = " " + entry.comment if entry.comment else ""
+				lscaladoc.append(f"@param {entry.name}{comm}")
+
 		elif isinstance(entry, Switch):
 			if entry.is_ref_out:
 				lswitches.append(gen_switch(entry, indent_level + 1))
@@ -335,7 +349,12 @@ def gen_compound_class(c: Compound,
 	if len(class_declaration) > line_max:
 		fields = f"\n{indent}{' ' * (len(class_start)+1)}".join(lfields)
 		fields_decl = f"({fields})"
-	return f"{indent}class {c.name}{fields_decl} {extends}{{\n" \
+	if len(lscaladoc) > 0:
+		scaladoc = f"{indent}/**\n{indent} * " + f"\n{indent} * ".join(lscaladoc) + f"\n{indent} */\n"
+	else:
+		scaladoc = ""
+	return f"{scaladoc}" \
+		   f"{indent}class {c.name}{fields_decl} {extends}{{\n" \
 		   f"{additional_code}" \
 		   f"{indent1}def writeTo({output}: NiolOutput): Unit = {{{writes_code}}}\n" \
 		   f"{compounds_code}" \
