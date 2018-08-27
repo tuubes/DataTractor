@@ -4,11 +4,11 @@ from datatractor.main.packets_extractor import *
 
 output = "out"
 input = "in"
-_imports = ["com.electronwill.niol.{NiolInput, NiolOutput}"
-			"org.tuubes.minecraft.protocol.common._"
-			"org.tuubes.minecraft.protocol.common.nbt._"]
+_imports = ["import com.electronwill.niol.{NiolInput, NiolOutput}",
+			"import org.tuubes.minecraft.protocol.common._",
+			"import org.tuubes.minecraft.protocol.common.nbt._"]
 line_max = -1
-dt_version = "2.0"
+dt_version = "2.1"
 
 
 def init(version: str, output_name="out", input_name="in", max_line_length=100):
@@ -19,7 +19,7 @@ def init(version: str, output_name="out", input_name="in", max_line_length=100):
 	input = input_name
 	v = version.replace('.', '_')
 	base_package = f"org.tuubes.minecraft.protocol.{v}"
-	_imports.append(f"org.tuubes.minecraft.protocol.{v}.utils._")
+	_imports.append(f"import org.tuubes.minecraft.protocol.{v}.utils._")
 
 	global line_max
 	line_max = max_line_length
@@ -307,7 +307,7 @@ def statement_read(entry: Union[Field, Switch], indent_level: int, typ=None, var
 
 def gen_compound_class(c: Compound,
 					   indent_level: int,
-					   do_import=False,
+					   add_imports=False,
 					   parent: Optional[str] = "Writeable",
 					   additional: Optional[str] = None,
 					   doc_text: Optional[str] = None,
@@ -348,7 +348,7 @@ def gen_compound_class(c: Compound,
 				lswitches.append(gen_switch(entry, indent_level + 1))
 		else:  # should not happen
 			print(f"[WARNING] Unknown entry of type {type(entry)} in compound {c.name}")
-	imports = '\n'.join(_imports) if do_import else ""
+	imports = '\n'.join(_imports) + "\n\n" if add_imports else ""
 	extends = f"extends {parent} " if parent else ""
 	additional_code = f"{indent1}{additional}\n" if additional else ""
 
@@ -370,7 +370,8 @@ def gen_compound_class(c: Compound,
 		scaladoc = f"{indent}/**\n{indent} * " + f"\n{indent} * ".join(lscaladoc) + f"\n{indent} */\n"
 	else:
 		scaladoc = ""
-	return f"{scaladoc}" \
+	return f"{imports}" \
+		   f"{scaladoc}" \
 		   f"{indent}class {c.name}{fields_decl} {extends}{{\n" \
 		   f"{additional_code}" \
 		   f"{indent1}def writeTo({output}: NiolOutput): Unit = {{{writes_code}}}\n" \
