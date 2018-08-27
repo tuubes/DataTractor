@@ -65,7 +65,7 @@ class PacketsExtractor:
 											 infos=f"serverbound, {protocol_infos}",
 											 doc_link=wikivg_link)
 
-			file = f"{sub_dir}/{sub.name.title()}.scala"
+			file = f"{sub_dir}/{sub.name.title()}Protocol.scala"
 			generator.write_protocol_class(sub, file,
 										   importsubpackage=f"packets.{sub_name}.serverbound",
 										   subpackage=f"packets.{sub_name}",
