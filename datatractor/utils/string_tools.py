@@ -72,6 +72,15 @@ def typename(name: str):
 	return pascal_case(res.strip())
 
 
+def type_param(typ: str):
+	if typ.startswith("Array["):
+		return typ.replace("Array[", "").replace(']', "", 1)
+	elif typ.startswith("Option["):
+		return typ.replace("Option[", "").replace(']', "", 1)
+	else:
+		raise Exception(f"The type {typ} hasn't any parameter")
+
+
 def first_up(s: str):
 	return s[:1].upper() + s[1:]
 
