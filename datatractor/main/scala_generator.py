@@ -10,6 +10,7 @@ _imports = ["com.electronwill.niol.{NiolInput, NiolOutput}"
 line_max = -1
 dt_version = "2.0"
 
+
 def init(version: str, output_name="out", input_name="in", max_line_length=100):
 	global output
 	global input
@@ -218,8 +219,18 @@ def type_for_declaration(x: Field):
 	if x.switch is not None:
 		return x.switch.name
 	new_type = multireplace(x.type, __types_decl_replacements)
+	c = x.comment.strip() if x.comment else ""
+	c = multireplace(c, {" ,": ",", " ;": ";", "  ": " "})
+	if c.endswith('.'):
+		c = c[:-1]
+	if c.lower() == "see below" or c.lower().startswith("number of elements in the following"):
+		c = ""
 	if new_type != x.type:
-		x.comment = f"Original type: {x.type}" if not x.comment else f"{x.comment}. Original type: {x.type}"
+		if c:
+			c += f". Original type: {x.type}"
+		else:
+			c = f"Original type: {x.type}"
+	x.comment = c if c else None
 	return new_type
 
 
