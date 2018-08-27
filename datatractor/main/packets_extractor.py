@@ -47,7 +47,7 @@ def find_documentation(game_version: str):
 		for row in table.rows[1:]:
 			release_name = get_text(row[0])
 			protocol = get_text(row[1])
-			print(f"release {release_name}, protocol {protocol}")
+			# print(f"release {release_name}, protocol {protocol}")
 			try:
 				protocol_number = int(protocol)
 			except:
