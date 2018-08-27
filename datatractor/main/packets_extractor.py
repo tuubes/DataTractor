@@ -20,13 +20,20 @@ def extract_packets(game_version: str):
 	print("Downloading the documentation...")
 	protocol_html = requests.get(url).text
 
+	# If we're using the last revision of the page, find its id and create a URL that will stay valid in the future
+	if "id=" not in url and '"wgRevisionId":' in protocol_html:
+		i = protocol_html.index('"wgRevisionId":') + len('"wgRevisionId":')
+		page_id = protocol_html[i:i + 10].split(',', maxsplit=1)[0].strip()
+		url = url.replace("wiki.vg/", "wiki.vg/index.php?title=") + "&oldid=" + page_id
+		print("Created future-proof url: ", url)
+
 	print("Organizing the data...")
 	soup = BeautifulSoup(protocol_html, "lxml")
 	sections = make_hierarchy(soup)
 	root = sections[0]
 
 	print("Analysing the protocol...")
-	protocol = extract_protocol(root, game_version, protocol_number)
+	protocol = extract_protocol(url, root, game_version, protocol_number)
 	return protocol
 
 
@@ -55,7 +62,7 @@ def find_documentation(game_version: str):
 	return None, None
 
 
-def extract_protocol(root: HtmlSection, game_version: str, protocol_number: int):
+def extract_protocol(doc_url: str, root: HtmlSection, game_version: str, protocol_number: int):
 	s_handshake = root.sub_id("Handshaking")
 	s_play = root.sub_id("Play")
 	s_status = root.sub_id("Status")
@@ -66,7 +73,7 @@ def extract_protocol(root: HtmlSection, game_version: str, protocol_number: int)
 	p_status = extract_subprotocol(s_status)
 	p_login = extract_subprotocol(s_login)
 
-	return Protocol(game_version, protocol_number, p_handshake, p_play, p_status, p_login)
+	return Protocol(doc_url, game_version, protocol_number, p_handshake, p_play, p_status, p_login)
 
 
 def extract_subprotocol(s: HtmlSection):

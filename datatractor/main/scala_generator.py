@@ -24,11 +24,11 @@ def init(version: str, output_name="out", input_name="in", max_line_length=100):
 	line_max = max_line_length
 
 
-def write_packet_class(p: PacketInfos, filepath: str, fullpackage=None, subpackage=None, infos="?"):
+def write_packet_class(p: PacketInfos, filepath: str, fullpackage=None, subpackage=None, infos="?", doc_url=None):
 	package = fullpackage if fullpackage else (f"{base_package}.{subpackage}" if subpackage else "???")
 	def_id = f"def id = {p.id()}"
 	doc = f"Packet {hex(p.id())}: {p.name().replace('Packet', '')} ({infos})"
-	pclass = gen_compound_class(p.main_compound, 0, parent="Packet", additional=def_id, doc_text=doc)
+	pclass = gen_compound_class(p.main_compound, 0, parent="Packet", additional=def_id, doc_text=doc, doc_link=doc_url)
 	pobject = gen_compound_object(p.main_compound, 0, parent="PacketObj", additional=def_id)
 	with open(filepath, mode="w+") as f:
 		f.write(f"package {package}\n\n")

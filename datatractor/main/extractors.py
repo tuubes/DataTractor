@@ -48,7 +48,8 @@ class PacketsExtractor:
 				file = f"{sub_clientbound}/{packet.name()}.scala"
 				generator.write_packet_class(packet, file,
 											 subpackage=f"packets.{sub_name}.clientbound",
-											 infos=f"clientbound, protocol {protocol.number} for MC {protocol.game_version}")
+											 infos=f"clientbound, protocol {protocol.number} for MC {protocol.game_version}",
+											 doc_url=(protocol.doc_url, "Documentation at wiki.vg"))
 
 			sub_serverbound = f"{sub_dir}/serverbound"
 			os.makedirs(sub_serverbound)
@@ -59,10 +60,13 @@ class PacketsExtractor:
 				file = f"{sub_serverbound}/{packet.name()}.scala"
 				generator.write_packet_class(packet, file,
 											 subpackage=f"packets.{sub_name}.serverbound",
-											 infos=f"serverbound, protocol {protocol.number} for MC {protocol.game_version}")
+											 infos=f"serverbound, protocol {protocol.number} for MC {protocol.game_version}",
+											 doc_url=(protocol.doc_url, "Documentation at wiki.vg"))
 
 			file = f"{sub_dir}/{sub.name.title()}.scala"
-			generator.write_protocol_class(sub, file, importsubpackage=f"packets.{sub_name}.serverbound", subpackage=f"packets.{sub_name}")
+			generator.write_protocol_class(sub, file,
+										   importsubpackage=f"packets.{sub_name}.serverbound",
+										   subpackage=f"packets.{sub_name}")
 
 		print("Generation complete!")
 

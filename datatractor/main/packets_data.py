@@ -193,7 +193,8 @@ class Enum:
 class Protocol:
 	"""Full Minecraft protocol"""
 
-	def __init__(self, game_version, number, sub_handshake, sub_play, sub_status, sub_login):
+	def __init__(self, doc_url, game_version, number, sub_handshake, sub_play, sub_status, sub_login):
+		self.doc_url = doc_url
 		self.game_version = game_version
 		self.number = number
 		self.handshake = sub_handshake
